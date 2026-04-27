@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wandermark - Your Visual Travel Map</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="logo">
+      <span class="logo-mark">✦</span>
+      <span class="logo-text">Wandermark</span>
+    </div>
+
+    <nav class="header-nav">
+      <button class="nav-btn" id="btn-world" title="World map">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        World
+      </button>
+      <button class="nav-btn active" id="btn-vietnam" title="Go to Vietnam">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
+        Viet Nam
+      </button>
+      <button class="nav-btn" id="btn-gallery" title="Gallery">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Gallery
+      </button>
+      <button class="nav-btn nav-btn-edit off" id="btn-edit-mode" title="Toggle editing mode">
+        <svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="M13 7l4 4"/></svg>
+        <span id="edit-mode-label">Owner: View Only</span>
+      </button>
+    </nav>
+
+    <div class="header-stats">
+      <span id="memory-count">0</span> memories
+    </div>
+  </header>
+
+  <div id="map"></div>
+
+  <div class="map-hint" id="map-hint">
+    <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm-1-5h2v2h-2zm0-8h2v6h-2z"/></svg>
+    Click anywhere on the map to drop a memory
+  </div>
+
+  <div class="city-pills" id="city-pills">
+    <button class="city-pill" data-lat="21.0285" data-lng="105.8542">Ha Noi</button>
+    <button class="city-pill" data-lat="10.8231" data-lng="106.6297">Ho Chi Minh City</button>
+    <button class="city-pill" data-lat="16.0471" data-lng="108.2068">Da Nang</button>
+    <button class="city-pill" data-lat="15.8794" data-lng="108.3350">Hoi An</button>
+    <button class="city-pill" data-lat="12.2388" data-lng="109.1967">Nha Trang</button>
+  </div>
+
+  <div class="modal-overlay" id="upload-modal">
+    <div class="modal" id="upload-modal-box">
+      <button class="modal-close" id="upload-close">✕</button>
+      <h2 class="modal-title">Drop a Memory</h2>
+      <p class="modal-sub" id="upload-location-label">Loading location...</p>
+
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept="image/*" multiple hidden />
+        <div class="upload-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <p>Drop image here or <span class="upload-link">browse</span></p>
+        <p class="upload-hint">JPEG · PNG · WebP - max 8 MB</p>
+      </div>
+
+      <img class="upload-preview" id="upload-preview" alt="preview" />
+      <p class="upload-selection" id="upload-selection"></p>
+
+      <div class="form-row">
+        <input class="text-input" id="input-caption" type="text" placeholder="Caption (optional)" maxlength="120" />
+      </div>
+      <div class="form-row">
+        <input class="text-input" id="input-date" type="date" />
+        <select class="text-input select-input" id="input-category">
+          <option value="travel">Travel</option>
+          <option value="food">Food</option>
+          <option value="friends">Friends</option>
+          <option value="nature">Nature</option>
+          <option value="culture">Culture</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-ghost" id="upload-cancel">Cancel</button>
+        <button class="btn-primary" id="upload-save" disabled>Save Memory</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="passcode-modal">
+    <div class="modal modal-passcode">
+      <button class="modal-close" id="passcode-close">✕</button>
+      <h2 class="modal-title">Owner Mode</h2>
+      <p class="modal-sub">Enter your passcode to unlock editing and uploads.</p>
+
+      <form id="passcode-form">
+        <div class="form-row form-row-stack">
+          <input class="text-input" id="passcode-input" type="password" placeholder="Passcode" autocomplete="current-password" />
+          <p class="form-error" id="passcode-error"></p>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-ghost" id="passcode-cancel" type="button">Cancel</button>
+          <button class="btn-primary" id="passcode-submit" type="submit">Unlock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="view-modal">
+    <div class="modal modal-view" id="view-modal-box">
+      <button class="modal-close" id="view-close">✕</button>
+      <div class="view-image-wrap">
+        <img class="view-image" id="view-image" alt="" />
+        <div class="view-category-badge" id="view-badge"></div>
+      </div>
+      <div class="view-body">
+        <p class="view-caption" id="view-caption"></p>
+        <p class="view-meta" id="view-meta"></p>
+        <p class="view-coords" id="view-coords"></p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-danger" id="view-delete">Delete</button>
+        <button class="btn-ghost" id="view-close2">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="gallery-panel" id="gallery-panel">
+    <div class="gallery-header">
+      <h2>Your Memories</h2>
+      <button class="modal-close" id="gallery-close">✕</button>
+    </div>
+    <div class="gallery-filters" id="gallery-filters">
+      <button class="filter-btn active" data-cat="all">All</button>
+      <button class="filter-btn" data-cat="travel">Travel</button>
+      <button class="filter-btn" data-cat="food">Food</button>
+      <button class="filter-btn" data-cat="friends">Friends</button>
+      <button class="filter-btn" data-cat="nature">Nature</button>
+      <button class="filter-btn" data-cat="culture">Culture</button>
+    </div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+    <p class="gallery-empty" id="gallery-empty">No memories yet. Click on the map to add your first one.</p>
+  </div>
+
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <p>Loading your memories...</p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

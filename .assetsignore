@@ -1,0 +1,7 @@
+worker.js
+wrangler.toml
+.dev.vars
+.dev.vars.*
+package.json
+package-lock.json
+node_modules/
