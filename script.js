@@ -172,7 +172,7 @@ const MapModule = (() => {
     [8.18, 102.14],
     [23.39, 109.46],
   ];
-  const WORLD_VIEW = { center: [20, 0], zoom: 2 };
+  const EU_VIEW = { center: [48, 10], zoom: 4 };
   const VIETNAM_VIEW = { center: [16.5, 106.5], zoom: 6 };
 
   async function init() {
@@ -183,12 +183,6 @@ const MapModule = (() => {
       maxZoom: 18,
       minZoom: 2,
     });
-
-    // L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    //   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    //   subdomains: 'abcd',
-    //   maxZoom: 19,
-    // }).addTo(map);
 
     L.tileLayer("http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
       subdomains: ["mt0", "mt1", "mt2", "mt3"],
@@ -211,8 +205,8 @@ const MapModule = (() => {
     return map;
   }
 
-  function flyToWorld() {
-    map.flyTo(WORLD_VIEW.center, WORLD_VIEW.zoom, {
+  function flyToEurope() {
+    map.flyTo(EU_VIEW.center, EU_VIEW.zoom, {
       duration: 1.2,
       easeLinearity: 0.3,
     });
@@ -245,7 +239,7 @@ const MapModule = (() => {
     }
   }
 
-  return { init, flyToWorld, flyToVietnam, flyTo, getMap };
+  return { init, flyToEurope, flyToVietnam, flyTo, getMap };
 })();
 
 const Markers = (() => {
@@ -889,6 +883,7 @@ const Gallery = (() => {
 const UI = (() => {
   const hint = document.getElementById("map-hint");
   const cityPills = document.getElementById("city-pills");
+  const euPills = document.getElementById("city-pills-eu");
   const editBtn = document.getElementById("btn-edit-mode");
   const editLabel = document.getElementById("edit-mode-label");
   let hintDismissed = false;
@@ -896,8 +891,9 @@ const UI = (() => {
 
   function init() {
     document.getElementById("btn-world").addEventListener("click", () => {
-      MapModule.flyToWorld();
+      MapModule.flyToEurope();
       setActive("btn-world");
+      euPills.classList.add("visible");
       cityPills.classList.remove("visible");
     });
 
@@ -905,6 +901,7 @@ const UI = (() => {
       MapModule.flyToVietnam();
       setActive("btn-vietnam");
       cityPills.classList.add("visible");
+      euPills.classList.remove("visible");
     });
 
     document.getElementById("btn-gallery").addEventListener("click", () => {
@@ -923,7 +920,7 @@ const UI = (() => {
       });
     });
 
-    document.querySelectorAll(".city-pill").forEach((pill) => {
+    document.querySelectorAll("#city-pills .city-pill, #city-pills-eu .city-pill").forEach((pill) => {
       pill.addEventListener("click", () => {
         MapModule.flyTo(Number(pill.dataset.lat), Number(pill.dataset.lng), 12);
       });
@@ -953,13 +950,23 @@ const UI = (() => {
         center.lat < 24 &&
         center.lng > 102 &&
         center.lng < 110;
+      const inEurope =
+        center.lat > 35 &&
+        center.lat < 71 &&
+        center.lng > -25 &&
+        center.lng < 40;
 
       if (inVietnam && zoom >= 5) {
         cityPills.classList.add("visible");
+        euPills.classList.remove("visible");
         setActive("btn-vietnam");
-      } else if (zoom < 4) {
+      } else if (inEurope && zoom >= 4) {
+        euPills.classList.add("visible");
         cityPills.classList.remove("visible");
         setActive("btn-world");
+      } else if (zoom < 3) {
+        cityPills.classList.remove("visible");
+        euPills.classList.remove("visible");
       }
     });
   }
