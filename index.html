@@ -135,6 +135,9 @@
       <button class="modal-close" id="view-close">✕</button>
       <div class="view-image-wrap">
         <img class="view-image" id="view-image" alt="" />
+        <button class="view-slider-btn view-slider-prev" id="view-prev">❮</button>
+        <button class="view-slider-btn view-slider-next" id="view-next">❯</button>
+        <div class="view-slider-counter" id="view-counter"></div>
         <div class="view-category-badge" id="view-badge"></div>
       </div>
       <div class="view-body">
@@ -143,8 +146,45 @@
         <p class="view-coords" id="view-coords"></p>
       </div>
       <div class="modal-actions">
+        <button class="btn-primary" id="view-edit" style="display: none;">Edit</button>
         <button class="btn-danger" id="view-delete">Delete</button>
         <button class="btn-ghost" id="view-close2">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="edit-modal">
+    <div class="modal" id="edit-modal-box">
+      <button class="modal-close" id="edit-close">✕</button>
+      <h2 class="modal-title">Edit Memory</h2>
+      <p class="modal-sub" id="edit-location-label"></p>
+
+      <div class="edit-images-zone">
+        <div class="edit-images-grid" id="edit-images-grid"></div>
+        <div class="edit-images-add" id="edit-images-add">
+          <input type="file" id="edit-file-input" accept="image/*" multiple hidden />
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>Add</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <input class="text-input" id="edit-input-caption" type="text" placeholder="Caption (optional)" maxlength="120" />
+      </div>
+      <div class="form-row">
+        <input class="text-input" id="edit-input-date" type="date" />
+        <select class="text-input select-input" id="edit-input-category">
+          <option value="travel">Travel</option>
+          <option value="food">Food</option>
+          <option value="friends">Friends</option>
+          <option value="nature">Nature</option>
+          <option value="culture">Culture</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-ghost" id="edit-cancel">Cancel</button>
+        <button class="btn-primary" id="edit-save">Save Changes</button>
       </div>
     </div>
   </div>

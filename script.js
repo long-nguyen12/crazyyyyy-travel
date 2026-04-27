@@ -99,14 +99,17 @@ const Storage = (() => {
 
   async function create(input) {
     const formData = new FormData();
-    formData.append("image", input.imageFile);
-    formData.append("thumbnail", input.thumbnailFile);
     formData.append("caption", input.caption);
     formData.append("date", input.date);
     formData.append("category", input.category);
     formData.append("lat", String(input.lat));
     formData.append("lng", String(input.lng));
     formData.append("createdAt", String(input.createdAt));
+    formData.append("imageCount", String(input.images.length));
+    input.images.forEach((img, i) => {
+      formData.append(`image_${i}`, img.imageFile);
+      formData.append(`thumbnail_${i}`, img.thumbnailFile);
+    });
 
     const response = await request(
       "/api/memories",
@@ -137,6 +140,41 @@ const Storage = (() => {
     }
   }
 
+  async function update(id, fields) {
+    const formData = new FormData();
+    if (fields.caption !== undefined) formData.append("caption", fields.caption);
+    if (fields.date !== undefined) formData.append("date", fields.date);
+    if (fields.category !== undefined) formData.append("category", fields.category);
+    if (fields.keptImages) formData.append("keptImages", JSON.stringify(fields.keptImages));
+    
+    if (fields.newImages && fields.newImages.length > 0) {
+      formData.append("newImageCount", String(fields.newImages.length));
+      fields.newImages.forEach((img, i) => {
+        formData.append(`new_image_${i}`, img.imageFile);
+        formData.append(`new_thumbnail_${i}`, img.thumbnailFile);
+      });
+    }
+
+    const response = await request(
+      `/api/memories/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        body: formData,
+      },
+      true,
+    );
+    const payload = await response.json();
+    const updatedMemory = normalizeMemory(payload.memory);
+
+    if (memoriesCache) {
+      const index = memoriesCache.findIndex((memory) => memory.id === id);
+      if (index !== -1) {
+        memoriesCache[index] = { ...memoriesCache[index], ...updatedMemory };
+      }
+    }
+    return updatedMemory;
+  }
+
   async function verifyOwnerPasscode(passcode) {
     if (!passcode) {
       throw new Error("Enter your passcode.");
@@ -161,6 +199,7 @@ const Storage = (() => {
     getById,
     isOwnerSessionUnlocked,
     remove,
+    update,
     verifyOwnerPasscode,
   };
 })();
@@ -272,8 +311,9 @@ const Markers = (() => {
 
   function createIcon(memory) {
     const catClass = `marker-cat-${memory.category || "travel"}`;
-    const imgInner = memory.thumbnail
-      ? `<img src="${memory.thumbnail}" alt="" />`
+    const imgSrc = memory.images && memory.images.length ? memory.images[0].thumbnail : null;
+    const imgInner = imgSrc
+      ? `<img src="${imgSrc}" alt="" />`
       : `<div class="marker-pin-default">${markerInitial(memory)}</div>`;
 
     return L.divIcon({
@@ -299,8 +339,9 @@ const Markers = (() => {
         })
       : "";
     const category = CATEGORY_LABEL[memory.category] || "Memory";
-    const imgTag = memory.thumbnail
-      ? `<img src="${memory.thumbnail}" alt="" />`
+    const imgSrc = memory.images && memory.images.length ? memory.images[0].thumbnail : null;
+    const imgTag = imgSrc
+      ? `<img src="${imgSrc}" alt="" />`
       : "";
 
     return `
@@ -368,7 +409,15 @@ const Markers = (() => {
     MapModule.getMap().closePopup();
   }
 
-  return { init, addMarker, deleteById, refreshPopups, removeMarker };
+  function updateMarker(memory) {
+    memoryMap[memory.id] = memory;
+    if (markerMap[memory.id]) {
+      markerMap[memory.id].setIcon(createIcon(memory));
+      markerMap[memory.id].setPopupContent(buildPopupHtml(memory));
+    }
+  }
+
+  return { init, addMarker, deleteById, refreshPopups, removeMarker, updateMarker };
 })();
 
 const UploadModal = (() => {
@@ -573,35 +622,34 @@ const UploadModal = (() => {
     try {
       const baseCaption = caption.value.trim();
       const baseCreatedAt = Date.now();
-      const totalImages = pendingImageDataURLs.length;
 
+      const imagesToUpload = [];
       for (let index = 0; index < pendingImageDataURLs.length; index += 1) {
         const imageDataURL = pendingImageDataURLs[index];
         const thumbnailDataURL = await makeThumbnail(imageDataURL);
-        const memory = await Storage.create({
+        imagesToUpload.push({
           imageFile: dataURLToFile(imageDataURL, `memory-${index + 1}.jpg`),
-          thumbnailFile: dataURLToFile(
-            thumbnailDataURL,
-            `thumb-${index + 1}.jpg`,
-          ),
-          caption: baseCaption,
-          date: dateInput.value,
-          category: category.value,
-          lat: pendingLatLng.lat,
-          lng: pendingLatLng.lng,
-          createdAt: baseCreatedAt + index,
+          thumbnailFile: dataURLToFile(thumbnailDataURL, `thumb-${index + 1}.jpg`),
         });
-
-        Markers.addMarker(memory, MapModule.getMap());
-        Gallery.addCard(memory);
       }
+
+      const memory = await Storage.create({
+        images: imagesToUpload,
+        caption: baseCaption,
+        date: dateInput.value,
+        category: category.value,
+        lat: pendingLatLng.lat,
+        lng: pendingLatLng.lng,
+        createdAt: baseCreatedAt,
+      });
+
+      Markers.addMarker(memory, MapModule.getMap());
+      Gallery.addCard(memory);
 
       UI.updateCount();
       close();
       resetZone();
-      showToast(
-        totalImages > 1 ? `${totalImages} memories saved!` : "Memory saved!",
-      );
+      showToast("Memory saved!");
     } catch (error) {
       alert(error.message || "Could not save memory.");
     } finally {
@@ -617,7 +665,7 @@ const UploadModal = (() => {
     }
   });
 
-  return { open, close };
+  return { open, close, compressImage, makeThumbnail, dataURLToFile };
 })();
 
 const PasscodeModal = (() => {
@@ -700,11 +748,15 @@ const PasscodeModal = (() => {
 const ViewModal = (() => {
   const overlay = document.getElementById("view-modal");
   const image = document.getElementById("view-image");
+  const prevBtn = document.getElementById("view-prev");
+  const nextBtn = document.getElementById("view-next");
+  const counter = document.getElementById("view-counter");
   const badge = document.getElementById("view-badge");
   const caption = document.getElementById("view-caption");
   const meta = document.getElementById("view-meta");
   const coords = document.getElementById("view-coords");
   const deleteBtn = document.getElementById("view-delete");
+  const editBtn = document.getElementById("view-edit");
 
   const CATEGORY_LABEL = {
     travel: "Travel",
@@ -715,13 +767,46 @@ const ViewModal = (() => {
   };
 
   let currentId = null;
+  let currentMemory = null;
+  let imageIndex = 0;
+
+  function renderImage() {
+    if (!currentMemory || !currentMemory.images || currentMemory.images.length === 0) return;
+    image.src = currentMemory.images[imageIndex].image;
+    
+    if (currentMemory.images.length > 1) {
+      prevBtn.style.display = "flex";
+      nextBtn.style.display = "flex";
+      counter.style.display = "block";
+      counter.textContent = `${imageIndex + 1} / ${currentMemory.images.length}`;
+    } else {
+      prevBtn.style.display = "none";
+      nextBtn.style.display = "none";
+      counter.style.display = "none";
+    }
+  }
+
+  prevBtn.addEventListener("click", () => {
+    if (!currentMemory) return;
+    imageIndex = (imageIndex - 1 + currentMemory.images.length) % currentMemory.images.length;
+    renderImage();
+  });
+
+  nextBtn.addEventListener("click", () => {
+    if (!currentMemory) return;
+    imageIndex = (imageIndex + 1) % currentMemory.images.length;
+    renderImage();
+  });
 
   async function open(id) {
     const memory = await Storage.getById(id);
     if (!memory) return;
 
     currentId = id;
-    image.src = memory.image;
+    currentMemory = memory;
+    imageIndex = 0;
+
+    renderImage();
     badge.textContent =
       CATEGORY_LABEL[memory.category] || memory.category || "Memory";
     caption.textContent = memory.caption || "Untitled memory";
@@ -746,7 +831,14 @@ const ViewModal = (() => {
 
   function syncControls() {
     deleteBtn.style.display = UI.isEditingEnabled() ? "" : "none";
+    editBtn.style.display = UI.isEditingEnabled() ? "" : "none";
   }
+
+  editBtn.addEventListener("click", () => {
+    if (!currentId || !UI.isEditingEnabled()) return;
+    EditModal.open(currentId);
+    close();
+  });
 
   deleteBtn.addEventListener("click", async () => {
     if (!currentId || !UI.isEditingEnabled()) return;
@@ -778,6 +870,140 @@ const ViewModal = (() => {
   });
 
   return { open, close, syncControls };
+})();
+
+const EditModal = (() => {
+  const overlay = document.getElementById("edit-modal");
+  const closeBtn = document.getElementById("edit-close");
+  const cancelBtn = document.getElementById("edit-cancel");
+  const saveBtn = document.getElementById("edit-save");
+  const captionInput = document.getElementById("edit-input-caption");
+  const dateInput = document.getElementById("edit-input-date");
+  const categoryInput = document.getElementById("edit-input-category");
+  const locLabel = document.getElementById("edit-location-label");
+  const imagesGrid = document.getElementById("edit-images-grid");
+  const addBtn = document.getElementById("edit-images-add");
+  const fileInput = document.getElementById("edit-file-input");
+
+  let currentId = null;
+  let keptImages = [];
+  let pendingNewImageDataURLs = [];
+
+  function renderImages() {
+    imagesGrid.innerHTML = "";
+    
+    keptImages.forEach((img, i) => {
+      const div = document.createElement("div");
+      div.className = "edit-image-item";
+      div.innerHTML = `<img src="${img.thumbnail}" /><button type="button" class="edit-image-remove" data-type="kept" data-index="${i}">✕</button>`;
+      imagesGrid.appendChild(div);
+    });
+
+    pendingNewImageDataURLs.forEach((dataUrl, i) => {
+      const div = document.createElement("div");
+      div.className = "edit-image-item pending";
+      div.innerHTML = `<img src="${dataUrl}" /><button type="button" class="edit-image-remove" data-type="new" data-index="${i}">✕</button>`;
+      imagesGrid.appendChild(div);
+    });
+
+    imagesGrid.querySelectorAll(".edit-image-remove").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const type = e.currentTarget.dataset.type;
+        const index = parseInt(e.currentTarget.dataset.index, 10);
+        if (type === "kept") keptImages.splice(index, 1);
+        if (type === "new") pendingNewImageDataURLs.splice(index, 1);
+        renderImages();
+      });
+    });
+  }
+
+  addBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", async (event) => {
+    const files = Array.from(event.target.files || []).filter(f => f.type.startsWith("image/"));
+    for (const file of files) {
+      if (file.size > 8 * 1024 * 1024) { alert(`"${file.name}" is too large.`); continue; }
+      const compressed = await UploadModal.compressImage(file);
+      pendingNewImageDataURLs.push(compressed);
+    }
+    fileInput.value = "";
+    renderImages();
+  });
+
+  async function open(id) {
+    const memory = await Storage.getById(id);
+    if (!memory) return;
+
+    currentId = id;
+    keptImages = [...(memory.images || [])];
+    pendingNewImageDataURLs = [];
+    renderImages();
+
+    captionInput.value = memory.caption || "";
+    dateInput.value = memory.date || "";
+    categoryInput.value = memory.category || "travel";
+    locLabel.textContent = `${memory.lat.toFixed(5)}°, ${memory.lng.toFixed(5)}°`;
+
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save Changes";
+
+    overlay.classList.add("open");
+  }
+
+  function close() {
+    overlay.classList.remove("open");
+    currentId = null;
+  }
+
+  saveBtn.addEventListener("click", async () => {
+    if (!currentId) return;
+
+    if (keptImages.length === 0 && pendingNewImageDataURLs.length === 0) {
+      alert("A memory must have at least one image.");
+      return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving...";
+
+    try {
+      const newImages = [];
+      for (let i = 0; i < pendingNewImageDataURLs.length; i++) {
+        const dataUrl = pendingNewImageDataURLs[i];
+        const thumbUrl = await UploadModal.makeThumbnail(dataUrl);
+        newImages.push({
+          imageFile: UploadModal.dataURLToFile(dataUrl, `new-${i}.jpg`),
+          thumbnailFile: UploadModal.dataURLToFile(thumbUrl, `new-thumb-${i}.jpg`)
+        });
+      }
+
+      const updatedMemory = await Storage.update(currentId, {
+        caption: captionInput.value.trim(),
+        date: dateInput.value,
+        category: categoryInput.value,
+        keptImages: keptImages.map(img => ({ imageKey: img.imageKey, thumbnailKey: img.thumbnailKey })),
+        newImages: newImages
+      });
+
+      Gallery.updateCard(updatedMemory);
+      Markers.updateMarker(updatedMemory);
+      
+      close();
+      showToast("Memory updated.");
+      ViewModal.open(updatedMemory.id);
+    } catch (error) {
+      alert(error.message || "Could not update memory.");
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save Changes";
+    }
+  });
+
+  closeBtn.addEventListener("click", close);
+  cancelBtn.addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+
+  return { open, close };
 })();
 
 const Gallery = (() => {
@@ -850,6 +1076,30 @@ const Gallery = (() => {
     updateEmpty();
   }
 
+  function updateCard(memory) {
+    const card = grid.querySelector(`[data-id="${memory.id}"]`);
+    if (!card) return;
+
+    card.dataset.cat = memory.category;
+    
+    const date = memory.date
+      ? new Date(memory.date).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "";
+
+    card.innerHTML = `
+      <img src="${memory.thumbnail || memory.image}" alt="" loading="lazy" />
+      <div class="gallery-card-info">
+        <div class="gallery-card-caption">${escHtml(memory.caption || "Untitled memory")}</div>
+        ${date ? `<div class="gallery-card-date">${date}</div>` : ""}
+      </div>`;
+
+    applyFilter(activeFilter);
+  }
+
   function applyFilter(category) {
     activeFilter = category;
     filterBtns.forEach((btn) =>
@@ -877,7 +1127,7 @@ const Gallery = (() => {
 
   document.getElementById("gallery-close").addEventListener("click", close);
 
-  return { open, close, toggle, addCard, removeCard };
+  return { open, close, toggle, addCard, removeCard, updateCard };
 })();
 
 const UI = (() => {
@@ -1047,6 +1297,7 @@ async function boot() {
       UploadModal.close();
       PasscodeModal.close();
       Gallery.close();
+      if (typeof EditModal !== "undefined") EditModal.close();
     }
   });
 
