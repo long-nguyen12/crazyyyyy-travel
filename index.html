@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wandermark - Your Visual Travel Map</title>
+  <title>My Travel Map</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -21,21 +21,21 @@
   <header class="app-header">
     <div class="logo">
       <span class="logo-mark">✦</span>
-      <span class="logo-text">Wandermark</span>
+      <span class="logo-text">Crazyyyyy</span>
     </div>
 
     <nav class="header-nav">
       <button class="nav-btn" id="btn-world" title="World map">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        World
+        <span>World</span>
       </button>
       <button class="nav-btn active" id="btn-vietnam" title="Go to Vietnam">
         <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
-        Viet Nam
+        <span>Viet Nam</span>
       </button>
       <button class="nav-btn" id="btn-gallery" title="Gallery">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        Gallery
+        <span>Gallery</span>
       </button>
       <button class="nav-btn nav-btn-edit off" id="btn-edit-mode" title="Toggle editing mode">
         <svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="M13 7l4 4"/></svg>
@@ -165,6 +165,7 @@
     </div>
   </div>
 
+  <div class="toast" id="toast"></div>
   <script src="script.js"></script>
 </body>
 </html>

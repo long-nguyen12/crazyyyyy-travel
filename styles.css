@@ -156,10 +156,10 @@ body.editing-disabled #map {
 }
 
 /* Custom Leaflet tile tint — applied via CSS filter on the tile layer */
-.leaflet-tile-pane {
-  filter: brightness(0.72) saturate(0.6) hue-rotate(180deg) invert(1)
+/* .leaflet-tile-pane {
+  filter: brightness(0.1) saturate(0.6) hue-rotate(180deg) invert(1)
           brightness(0.55) contrast(1.1);
-}
+} */
 
 /* Override cluster colours */
 .marker-cluster-small,
@@ -810,6 +810,31 @@ body.editing-disabled #map {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ─── Toast ──────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  z-index: 3000;
+  padding: 12px 24px;
+  background: var(--bg-panel);
+  border: 1px solid var(--copper);
+  border-radius: var(--radius-md);
+  color: var(--parchment);
+  font-family: var(--font-body);
+  font-size: 13px;
+  box-shadow: var(--shadow-soft), var(--shadow-glow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s var(--ease-spring);
+}
+.toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
 
 /* ─── Responsive ──────────────────────────────────────────── */
 @media (max-width: 640px) {

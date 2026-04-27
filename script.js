@@ -1,17 +1,17 @@
-'use strict';
+"use strict";
 
 const API_CONFIG = {
   // Leave empty when the site and Worker share a host.
   // Set this to your Worker origin when the API is deployed separately.
-  baseUrl: 'https://wandermark-api.crazyyyyy-travel.workers.dev/',
+  baseUrl: "https://wandermark-api.crazyyyyy-travel.workers.dev/",
 };
 
 const OWNER_ACCESS = {
-  sessionKey: 'longnh',
+  sessionKey: "longnh",
 };
 
 const Storage = (() => {
-  const apiRoot = API_CONFIG.baseUrl.replace(/\/$/, '');
+  const apiRoot = API_CONFIG.baseUrl.replace(/\/$/, "");
   let memoriesCache = null;
 
   function buildUrl(path) {
@@ -19,7 +19,7 @@ const Storage = (() => {
   }
 
   function getOwnerPasscode() {
-    return sessionStorage.getItem(OWNER_ACCESS.sessionKey) || '';
+    return sessionStorage.getItem(OWNER_ACCESS.sessionKey) || "";
   }
 
   function clearOwnerPasscode() {
@@ -41,9 +41,9 @@ const Storage = (() => {
     if (requiresOwner) {
       const passcode = getOwnerPasscode();
       if (!passcode) {
-        throw new Error('Unlock owner mode first.');
+        throw new Error("Unlock owner mode first.");
       }
-      headers.set('x-owner-passcode', passcode);
+      headers.set("x-owner-passcode", passcode);
     }
 
     let response;
@@ -53,12 +53,14 @@ const Storage = (() => {
         headers,
       });
     } catch {
-      throw new Error('Could not reach the memory API. Deploy the Cloudflare Worker and set API_CONFIG.baseUrl if needed.');
+      throw new Error(
+        "Could not reach the memory API. Deploy the Cloudflare Worker and set API_CONFIG.baseUrl if needed.",
+      );
     }
 
     if (response.status === 401) {
       clearOwnerPasscode();
-      throw new Error('Incorrect passcode.');
+      throw new Error("Incorrect passcode.");
     }
 
     if (!response.ok) {
@@ -80,7 +82,7 @@ const Storage = (() => {
       return [...memoriesCache];
     }
 
-    const response = await request('/api/memories');
+    const response = await request("/api/memories");
     const payload = await response.json();
     const memories = Array.isArray(payload.memories)
       ? payload.memories.map(normalizeMemory)
@@ -92,24 +94,28 @@ const Storage = (() => {
 
   async function getById(id) {
     const memories = await getAll();
-    return memories.find(memory => memory.id === id) || null;
+    return memories.find((memory) => memory.id === id) || null;
   }
 
   async function create(input) {
     const formData = new FormData();
-    formData.append('image', input.imageFile);
-    formData.append('thumbnail', input.thumbnailFile);
-    formData.append('caption', input.caption);
-    formData.append('date', input.date);
-    formData.append('category', input.category);
-    formData.append('lat', String(input.lat));
-    formData.append('lng', String(input.lng));
-    formData.append('createdAt', String(input.createdAt));
+    formData.append("image", input.imageFile);
+    formData.append("thumbnail", input.thumbnailFile);
+    formData.append("caption", input.caption);
+    formData.append("date", input.date);
+    formData.append("category", input.category);
+    formData.append("lat", String(input.lat));
+    formData.append("lng", String(input.lng));
+    formData.append("createdAt", String(input.createdAt));
 
-    const response = await request('/api/memories', {
-      method: 'POST',
-      body: formData,
-    }, true);
+    const response = await request(
+      "/api/memories",
+      {
+        method: "POST",
+        body: formData,
+      },
+      true,
+    );
     const payload = await response.json();
     const memory = normalizeMemory(payload.memory);
 
@@ -118,23 +124,27 @@ const Storage = (() => {
   }
 
   async function remove(id) {
-    await request(`/api/memories/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    }, true);
+    await request(
+      `/api/memories/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+      },
+      true,
+    );
 
     if (memoriesCache) {
-      memoriesCache = memoriesCache.filter(memory => memory.id !== id);
+      memoriesCache = memoriesCache.filter((memory) => memory.id !== id);
     }
   }
 
   async function verifyOwnerPasscode(passcode) {
     if (!passcode) {
-      throw new Error('Enter your passcode.');
+      throw new Error("Enter your passcode.");
     }
 
-    await request('/api/session', {
-      method: 'POST',
-      headers: { 'x-owner-passcode': passcode },
+    await request("/api/session", {
+      method: "POST",
+      headers: { "x-owner-passcode": passcode },
     });
 
     sessionStorage.setItem(OWNER_ACCESS.sessionKey, passcode);
@@ -158,12 +168,15 @@ const Storage = (() => {
 const MapModule = (() => {
   let map = null;
 
-  const VIETNAM_BOUNDS = [[8.18, 102.14], [23.39, 109.46]];
+  const VIETNAM_BOUNDS = [
+    [8.18, 102.14],
+    [23.39, 109.46],
+  ];
   const WORLD_VIEW = { center: [20, 0], zoom: 2 };
   const VIETNAM_VIEW = { center: [16.5, 106.5], zoom: 6 };
 
-  function init() {
-    map = L.map('map', {
+  async function init() {
+    map = L.map("map", {
       center: VIETNAM_VIEW.center,
       zoom: VIETNAM_VIEW.zoom,
       zoomControl: true,
@@ -171,33 +184,46 @@ const MapModule = (() => {
       minZoom: 2,
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 19,
+    // L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    //   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    //   subdomains: 'abcd',
+    //   maxZoom: 19,
+    // }).addTo(map);
+
+    L.tileLayer("http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
+      subdomains: ["mt0", "mt1", "mt2", "mt3"],
+      attribution:
+        '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
     }).addTo(map);
 
-    L.geoJSON(vietnamGeoJSON(), {
+    L.geoJSON(await vietnamGeoJSON(), {
       style: {
-        color: '#da251d',
+        color: "#da251d",
         weight: 1.5,
         opacity: 0.6,
-        fillColor: '#da251d',
+        fillColor: "#da251d",
         fillOpacity: 0.06,
-        dashArray: '4 3',
+        dashArray: "4 3",
       },
     }).addTo(map);
 
-    map.zoomControl.setPosition('bottomright');
+    map.zoomControl.setPosition("bottomright");
     return map;
   }
 
   function flyToWorld() {
-    map.flyTo(WORLD_VIEW.center, WORLD_VIEW.zoom, { duration: 1.2, easeLinearity: 0.3 });
+    map.flyTo(WORLD_VIEW.center, WORLD_VIEW.zoom, {
+      duration: 1.2,
+      easeLinearity: 0.3,
+    });
   }
 
   function flyToVietnam() {
-    map.flyToBounds(VIETNAM_BOUNDS, { padding: [40, 40], duration: 1.5, easeLinearity: 0.25 });
+    map.flyToBounds(VIETNAM_BOUNDS, {
+      padding: [40, 40],
+      duration: 1.5,
+      easeLinearity: 0.25,
+    });
   }
 
   function flyTo(lat, lng, zoom = 13) {
@@ -208,23 +234,15 @@ const MapModule = (() => {
     return map;
   }
 
-  function vietnamGeoJSON() {
-    return {
-      type: 'Feature',
-      geometry: {
-        type: 'Polygon',
-        coordinates: [[
-          [102.14, 22.50], [103.70, 22.80], [104.70, 22.95], [105.50, 23.39],
-          [106.70, 22.80], [107.30, 22.00], [108.00, 21.50], [108.30, 20.60],
-          [107.90, 19.80], [108.00, 18.50], [108.00, 17.20], [108.80, 16.00],
-          [109.20, 14.00], [109.50, 12.50], [109.50, 11.50], [109.00, 10.30],
-          [107.50, 9.50], [106.60, 9.50], [105.20, 8.60], [104.50, 9.50],
-          [103.50, 10.50], [103.00, 11.50], [103.50, 13.00], [102.50, 14.00],
-          [102.14, 16.00], [102.50, 17.50], [103.00, 19.00], [102.70, 20.50],
-          [102.14, 22.50],
-        ]],
-      },
-    };
+  async function vietnamGeoJSON() {
+    try {
+      const response = await fetch("./geo-json/vn.json");
+      if (!response.ok) throw new Error("Failed to load GeoJSON");
+      return await response.json();
+    } catch (e) {
+      console.error(e);
+      return { type: "FeatureCollection", features: [] };
+    }
   }
 
   return { init, flyToWorld, flyToVietnam, flyTo, getMap };
@@ -236,11 +254,11 @@ const Markers = (() => {
   const memoryMap = {};
 
   const CATEGORY_LABEL = {
-    travel: 'Travel',
-    food: 'Food',
-    friends: 'Friends',
-    nature: 'Nature',
-    culture: 'Culture',
+    travel: "Travel",
+    food: "Food",
+    friends: "Friends",
+    nature: "Nature",
+    culture: "Culture",
   };
 
   function init(map) {
@@ -254,12 +272,12 @@ const Markers = (() => {
   }
 
   function markerInitial(memory) {
-    const label = CATEGORY_LABEL[memory.category] || 'Memory';
+    const label = CATEGORY_LABEL[memory.category] || "Memory";
     return label.charAt(0).toUpperCase();
   }
 
   function createIcon(memory) {
-    const catClass = `marker-cat-${memory.category || 'travel'}`;
+    const catClass = `marker-cat-${memory.category || "travel"}`;
     const imgInner = memory.thumbnail
       ? `<img src="${memory.thumbnail}" alt="" />`
       : `<div class="marker-pin-default">${markerInitial(memory)}</div>`;
@@ -270,7 +288,7 @@ const Markers = (() => {
           <div class="marker-pin">${imgInner}</div>
           <div class="marker-tail"></div>
         </div>`,
-      className: '',
+      className: "",
       iconSize: [40, 48],
       iconAnchor: [20, 48],
       popupAnchor: [0, -50],
@@ -278,21 +296,27 @@ const Markers = (() => {
   }
 
   function buildPopupHtml(memory) {
-    const caption = memory.caption || 'Untitled memory';
+    const caption = memory.caption || "Untitled memory";
     const date = memory.date
-      ? new Date(memory.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-      : '';
-    const category = CATEGORY_LABEL[memory.category] || 'Memory';
-    const imgTag = memory.thumbnail ? `<img src="${memory.thumbnail}" alt="" />` : '';
+      ? new Date(memory.date).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "";
+    const category = CATEGORY_LABEL[memory.category] || "Memory";
+    const imgTag = memory.thumbnail
+      ? `<img src="${memory.thumbnail}" alt="" />`
+      : "";
 
     return `
       <div class="popup-inner">
         ${imgTag}
         <div class="popup-caption">${escHtml(caption)}</div>
-        <div class="popup-meta">${escHtml(category)} ${date ? '&middot; ' + date : ''}</div>
+        <div class="popup-meta">${escHtml(category)} ${date ? "&middot; " + date : ""}</div>
         <div class="popup-actions">
-          <button class="popup-btn popup-btn-open" onclick="ViewModal.open('${memory.id}')">Open</button>
-          ${UI.isEditingEnabled() ? `<button class="popup-btn" onclick="Markers.deleteById('${memory.id}')">Delete</button>` : ''}
+          <button class="popup-btn popup-btn-open" data-action="open" data-id="${memory.id}">Open</button>
+          ${UI.isEditingEnabled() ? `<button class="popup-btn" data-action="delete" data-id="${memory.id}">Delete</button>` : ""}
         </div>
       </div>
     `;
@@ -305,13 +329,20 @@ const Markers = (() => {
       icon: createIcon(memory),
     });
 
-    marker.on('click', () => {
+    marker.on("click", () => {
       ViewModal.open(memory.id);
     });
 
-    marker.bindPopup(buildPopupHtml(memory), { maxWidth: 260, className: '' });
-    marker.on('popupopen', () => {
+    marker.bindPopup(buildPopupHtml(memory), { maxWidth: 260, className: "" });
+    marker.on("popupopen", () => {
       marker.setPopupContent(buildPopupHtml(memoryMap[memory.id]));
+      const container = marker.getPopup().getElement();
+      const openBtn = container.querySelector('[data-action="open"]');
+      const delBtn = container.querySelector('[data-action="delete"]');
+      if (openBtn)
+        openBtn.addEventListener("click", () => ViewModal.open(memory.id));
+      if (delBtn)
+        delBtn.addEventListener("click", () => Markers.deleteById(memory.id));
     });
 
     clusterGroup.addLayer(marker);
@@ -327,14 +358,14 @@ const Markers = (() => {
   }
 
   function refreshPopups() {
-    Object.keys(markerMap).forEach(id => {
+    Object.keys(markerMap).forEach((id) => {
       markerMap[id].setPopupContent(buildPopupHtml(memoryMap[id]));
     });
   }
 
   async function deleteById(id) {
     if (!UI.isEditingEnabled()) return;
-    if (!confirm('Delete this memory?')) return;
+    if (!confirm("Delete this memory?")) return;
 
     await Storage.remove(id);
     removeMarker(id);
@@ -350,63 +381,71 @@ const UploadModal = (() => {
   let pendingLatLng = null;
   let pendingImageDataURLs = [];
 
-  const overlay = document.getElementById('upload-modal');
-  const zone = document.getElementById('upload-zone');
-  const fileInput = document.getElementById('file-input');
-  const preview = document.getElementById('upload-preview');
-  const selection = document.getElementById('upload-selection');
-  const caption = document.getElementById('input-caption');
-  const dateInput = document.getElementById('input-date');
-  const category = document.getElementById('input-category');
-  const saveBtn = document.getElementById('upload-save');
-  const locLabel = document.getElementById('upload-location-label');
+  const overlay = document.getElementById("upload-modal");
+  const zone = document.getElementById("upload-zone");
+  const fileInput = document.getElementById("file-input");
+  const preview = document.getElementById("upload-preview");
+  const selection = document.getElementById("upload-selection");
+  const caption = document.getElementById("input-caption");
+  const dateInput = document.getElementById("input-date");
+  const category = document.getElementById("input-category");
+  const saveBtn = document.getElementById("upload-save");
+  const locLabel = document.getElementById("upload-location-label");
 
   function open(latlng) {
     pendingLatLng = latlng;
     pendingImageDataURLs = [];
-    preview.src = '';
-    preview.classList.remove('visible');
-    selection.textContent = '';
-    selection.classList.remove('visible');
-    caption.value = '';
+    preview.src = "";
+    preview.classList.remove("visible");
+    selection.textContent = "";
+    selection.classList.remove("visible");
+    caption.value = "";
     dateInput.value = new Date().toISOString().slice(0, 10);
-    category.value = 'travel';
+    category.value = "travel";
     saveBtn.disabled = true;
-    saveBtn.textContent = 'Save Memory';
+    saveBtn.textContent = "Save Memory";
 
     resetZone();
     locLabel.textContent = `Loading ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}...`;
-    fetchPlaceName(latlng.lat, latlng.lng).then(name => {
+    fetchPlaceName(latlng.lat, latlng.lng).then((name) => {
       locLabel.textContent = name;
     });
 
-    overlay.classList.add('open');
+    overlay.classList.add("open");
   }
 
   function close() {
-    overlay.classList.remove('open');
+    overlay.classList.remove("open");
     pendingLatLng = null;
     pendingImageDataURLs = [];
   }
 
   function resetZone() {
-    zone.style.display = '';
-    preview.classList.remove('visible');
-    selection.classList.remove('visible');
-    selection.textContent = '';
-    fileInput.value = '';
+    zone.style.display = "";
+    preview.classList.remove("visible");
+    selection.classList.remove("visible");
+    selection.textContent = "";
+    fileInput.value = "";
   }
 
   async function fetchPlaceName(lat, lng) {
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`, {
-        headers: { 'Accept-Language': 'en' },
-      });
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+        {
+          headers: { "Accept-Language": "en" },
+        },
+      );
       const data = await response.json();
       const address = data.address || {};
-      return [address.city || address.town || address.village || address.county, address.country]
-        .filter(Boolean)
-        .join(', ') || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      return (
+        [
+          address.city || address.town || address.village || address.county,
+          address.country,
+        ]
+          .filter(Boolean)
+          .join(", ") || `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+      );
     } catch {
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
@@ -415,7 +454,7 @@ const UploadModal = (() => {
   function compressImage(file, maxDim = 1600, quality = 0.82) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = event => {
+      reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
           let { width, height } = img;
@@ -423,11 +462,11 @@ const UploadModal = (() => {
           width = Math.round(width * scale);
           height = Math.round(height * scale);
 
-          const canvas = document.createElement('canvas');
+          const canvas = document.createElement("canvas");
           canvas.width = width;
           canvas.height = height;
-          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
+          canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
         };
         img.onerror = reject;
         img.src = event.target.result;
@@ -438,12 +477,12 @@ const UploadModal = (() => {
   }
 
   function makeThumbnail(dataURL) {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
         const size = 120;
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
         canvas.width = size;
         canvas.height = size;
 
@@ -454,16 +493,16 @@ const UploadModal = (() => {
         const sy = (img.height - sh) / 2;
 
         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
-        resolve(canvas.toDataURL('image/jpeg', 0.72));
+        resolve(canvas.toDataURL("image/jpeg", 0.72));
       };
       img.src = dataURL;
     });
   }
 
   function dataURLToFile(dataURL, filename) {
-    const [meta, base64] = dataURL.split(',');
+    const [meta, base64] = dataURL.split(",");
     const mimeMatch = meta.match(/data:(.*?);base64/);
-    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
 
@@ -475,68 +514,82 @@ const UploadModal = (() => {
   }
 
   async function handleFiles(files) {
-    const validFiles = Array.from(files || []).filter(file => file.type.startsWith('image/'));
+    const validFiles = Array.from(files || []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
     if (!validFiles.length) return;
 
-    const oversized = validFiles.find(file => file.size > 8 * 1024 * 1024);
+    const oversized = validFiles.find((file) => file.size > 8 * 1024 * 1024);
     if (oversized) {
       alert(`"${oversized.name}" is too large (max 8 MB).`);
       return;
     }
 
-    const compressed = await Promise.all(validFiles.map(file => compressImage(file)));
+    const compressed = await Promise.all(
+      validFiles.map((file) => compressImage(file)),
+    );
     pendingImageDataURLs = compressed;
 
     preview.src = compressed[0];
-    preview.classList.add('visible');
-    selection.textContent = compressed.length === 1
-      ? '1 image selected.'
-      : `${compressed.length} images selected. The first image is shown as preview.`;
-    selection.classList.add('visible');
-    zone.style.display = 'none';
+    preview.classList.add("visible");
+    selection.textContent =
+      compressed.length === 1
+        ? "1 image selected."
+        : `${compressed.length} images selected. The first image is shown as preview.`;
+    selection.classList.add("visible");
+    zone.style.display = "none";
     saveBtn.disabled = false;
-    saveBtn.textContent = compressed.length > 1 ? `Save ${compressed.length} Memories` : 'Save Memory';
+    saveBtn.textContent =
+      compressed.length > 1
+        ? `Save ${compressed.length} Memories`
+        : "Save Memory";
   }
 
-  zone.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', event => handleFiles(event.target.files));
+  zone.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", (event) =>
+    handleFiles(event.target.files),
+  );
 
-  zone.addEventListener('dragover', event => {
+  zone.addEventListener("dragover", (event) => {
     event.preventDefault();
-    zone.classList.add('dragover');
+    zone.classList.add("dragover");
   });
-  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-  zone.addEventListener('drop', event => {
+  zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+  zone.addEventListener("drop", (event) => {
     event.preventDefault();
-    zone.classList.remove('dragover');
+    zone.classList.remove("dragover");
     handleFiles(event.dataTransfer.files);
   });
 
-  document.getElementById('upload-close').addEventListener('click', () => {
+  document.getElementById("upload-close").addEventListener("click", () => {
     close();
     resetZone();
   });
-  document.getElementById('upload-cancel').addEventListener('click', () => {
+  document.getElementById("upload-cancel").addEventListener("click", () => {
     close();
     resetZone();
   });
 
-  saveBtn.addEventListener('click', async () => {
+  saveBtn.addEventListener("click", async () => {
     if (!pendingImageDataURLs.length || !pendingLatLng) return;
 
     saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving...';
+    saveBtn.textContent = "Saving...";
 
     try {
       const baseCaption = caption.value.trim();
       const baseCreatedAt = Date.now();
+      const totalImages = pendingImageDataURLs.length;
 
       for (let index = 0; index < pendingImageDataURLs.length; index += 1) {
         const imageDataURL = pendingImageDataURLs[index];
         const thumbnailDataURL = await makeThumbnail(imageDataURL);
         const memory = await Storage.create({
           imageFile: dataURLToFile(imageDataURL, `memory-${index + 1}.jpg`),
-          thumbnailFile: dataURLToFile(thumbnailDataURL, `thumb-${index + 1}.jpg`),
+          thumbnailFile: dataURLToFile(
+            thumbnailDataURL,
+            `thumb-${index + 1}.jpg`,
+          ),
           caption: baseCaption,
           date: dateInput.value,
           category: category.value,
@@ -552,15 +605,18 @@ const UploadModal = (() => {
       UI.updateCount();
       close();
       resetZone();
+      showToast(
+        totalImages > 1 ? `${totalImages} memories saved!` : "Memory saved!",
+      );
     } catch (error) {
-      alert(error.message || 'Could not save memory.');
+      alert(error.message || "Could not save memory.");
     } finally {
       saveBtn.disabled = false;
-      saveBtn.textContent = 'Save Memory';
+      saveBtn.textContent = "Save Memory";
     }
   });
 
-  overlay.addEventListener('click', event => {
+  overlay.addEventListener("click", (event) => {
     if (event.target === overlay) {
       close();
       resetZone();
@@ -571,39 +627,39 @@ const UploadModal = (() => {
 })();
 
 const PasscodeModal = (() => {
-  const overlay = document.getElementById('passcode-modal');
-  const form = document.getElementById('passcode-form');
-  const input = document.getElementById('passcode-input');
-  const error = document.getElementById('passcode-error');
-  const submitBtn = document.getElementById('passcode-submit');
-  const closeBtn = document.getElementById('passcode-close');
-  const cancelBtn = document.getElementById('passcode-cancel');
+  const overlay = document.getElementById("passcode-modal");
+  const form = document.getElementById("passcode-form");
+  const input = document.getElementById("passcode-input");
+  const error = document.getElementById("passcode-error");
+  const submitBtn = document.getElementById("passcode-submit");
+  const closeBtn = document.getElementById("passcode-close");
+  const cancelBtn = document.getElementById("passcode-cancel");
 
   let submitHandler = null;
 
   function reset() {
     form.reset();
-    error.textContent = '';
-    error.classList.remove('visible');
+    error.textContent = "";
+    error.classList.remove("visible");
     submitBtn.disabled = false;
-    submitBtn.textContent = 'Unlock';
+    submitBtn.textContent = "Unlock";
   }
 
   function open(onSubmit) {
     submitHandler = onSubmit;
     reset();
-    overlay.classList.add('open');
+    overlay.classList.add("open");
     requestAnimationFrame(() => input.focus());
   }
 
   function close() {
-    overlay.classList.remove('open');
+    overlay.classList.remove("open");
     submitHandler = null;
   }
 
   function showError(message) {
     error.textContent = message;
-    error.classList.add('visible');
+    error.classList.add("visible");
   }
 
   async function handleSubmit(event) {
@@ -612,22 +668,22 @@ const PasscodeModal = (() => {
 
     const passcode = input.value.trim();
     if (!passcode) {
-      showError('Enter your passcode.');
+      showError("Enter your passcode.");
       return;
     }
 
-    error.textContent = '';
-    error.classList.remove('visible');
+    error.textContent = "";
+    error.classList.remove("visible");
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Unlocking...';
+    submitBtn.textContent = "Unlocking...";
 
     try {
       await submitHandler(passcode);
       close();
     } catch (errorValue) {
-      showError(errorValue.message || 'Could not unlock owner mode.');
+      showError(errorValue.message || "Could not unlock owner mode.");
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Unlock';
+      submitBtn.textContent = "Unlock";
     }
   }
 
@@ -635,10 +691,10 @@ const PasscodeModal = (() => {
     close();
   }
 
-  form.addEventListener('submit', handleSubmit);
-  closeBtn.addEventListener('click', handleDismiss);
-  cancelBtn.addEventListener('click', handleDismiss);
-  overlay.addEventListener('click', event => {
+  form.addEventListener("submit", handleSubmit);
+  closeBtn.addEventListener("click", handleDismiss);
+  cancelBtn.addEventListener("click", handleDismiss);
+  overlay.addEventListener("click", (event) => {
     if (event.target === overlay) {
       handleDismiss();
     }
@@ -648,20 +704,20 @@ const PasscodeModal = (() => {
 })();
 
 const ViewModal = (() => {
-  const overlay = document.getElementById('view-modal');
-  const image = document.getElementById('view-image');
-  const badge = document.getElementById('view-badge');
-  const caption = document.getElementById('view-caption');
-  const meta = document.getElementById('view-meta');
-  const coords = document.getElementById('view-coords');
-  const deleteBtn = document.getElementById('view-delete');
+  const overlay = document.getElementById("view-modal");
+  const image = document.getElementById("view-image");
+  const badge = document.getElementById("view-badge");
+  const caption = document.getElementById("view-caption");
+  const meta = document.getElementById("view-meta");
+  const coords = document.getElementById("view-coords");
+  const deleteBtn = document.getElementById("view-delete");
 
   const CATEGORY_LABEL = {
-    travel: 'Travel',
-    food: 'Food',
-    friends: 'Friends',
-    nature: 'Nature',
-    culture: 'Culture',
+    travel: "Travel",
+    food: "Food",
+    friends: "Friends",
+    nature: "Nature",
+    culture: "Culture",
   };
 
   let currentId = null;
@@ -672,41 +728,56 @@ const ViewModal = (() => {
 
     currentId = id;
     image.src = memory.image;
-    badge.textContent = CATEGORY_LABEL[memory.category] || memory.category || 'Memory';
-    caption.textContent = memory.caption || 'Untitled memory';
+    badge.textContent =
+      CATEGORY_LABEL[memory.category] || memory.category || "Memory";
+    caption.textContent = memory.caption || "Untitled memory";
     meta.textContent = memory.date
-      ? new Date(memory.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-      : '';
+      ? new Date(memory.date).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : "";
     coords.textContent = `${memory.lat.toFixed(5)}°, ${memory.lng.toFixed(5)}°`;
     syncControls();
 
-    overlay.classList.add('open');
+    overlay.classList.add("open");
     MapModule.getMap().closePopup();
   }
 
   function close() {
-    overlay.classList.remove('open');
+    overlay.classList.remove("open");
     currentId = null;
   }
 
   function syncControls() {
-    deleteBtn.style.display = UI.isEditingEnabled() ? '' : 'none';
+    deleteBtn.style.display = UI.isEditingEnabled() ? "" : "none";
   }
 
-  deleteBtn.addEventListener('click', async () => {
+  deleteBtn.addEventListener("click", async () => {
     if (!currentId || !UI.isEditingEnabled()) return;
-    if (!confirm('Delete this memory?')) return;
+    if (!confirm("Delete this memory?")) return;
 
-    await Storage.remove(currentId);
-    Markers.removeMarker(currentId);
-    Gallery.removeCard(currentId);
-    UI.updateCount();
-    close();
+    deleteBtn.disabled = true;
+    deleteBtn.textContent = "Deleting...";
+    try {
+      await Storage.remove(currentId);
+      Markers.removeMarker(currentId);
+      Gallery.removeCard(currentId);
+      UI.updateCount();
+      close();
+      showToast("Memory deleted.");
+    } catch (error) {
+      alert(error.message || "Could not delete memory.");
+    } finally {
+      deleteBtn.disabled = false;
+      deleteBtn.textContent = "Delete";
+    }
   });
 
-  document.getElementById('view-close').addEventListener('click', close);
-  document.getElementById('view-close2').addEventListener('click', close);
-  overlay.addEventListener('click', event => {
+  document.getElementById("view-close").addEventListener("click", close);
+  document.getElementById("view-close2").addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
     if (event.target === overlay) {
       close();
     }
@@ -716,25 +787,25 @@ const ViewModal = (() => {
 })();
 
 const Gallery = (() => {
-  const panel = document.getElementById('gallery-panel');
-  const grid = document.getElementById('gallery-grid');
-  const emptyMsg = document.getElementById('gallery-empty');
-  const filterBtns = document.querySelectorAll('.filter-btn');
+  const panel = document.getElementById("gallery-panel");
+  const grid = document.getElementById("gallery-grid");
+  const emptyMsg = document.getElementById("gallery-empty");
+  const filterBtns = document.querySelectorAll(".filter-btn");
 
-  let activeFilter = 'all';
+  let activeFilter = "all";
 
   function open() {
-    panel.classList.add('open');
-    document.getElementById('btn-gallery').classList.add('active');
+    panel.classList.add("open");
+    document.getElementById("btn-gallery").classList.add("active");
   }
 
   function close() {
-    panel.classList.remove('open');
-    document.getElementById('btn-gallery').classList.remove('active');
+    panel.classList.remove("open");
+    document.getElementById("btn-gallery").classList.remove("active");
   }
 
   function toggle() {
-    if (panel.classList.contains('open')) {
+    if (panel.classList.contains("open")) {
       close();
       return;
     }
@@ -743,21 +814,25 @@ const Gallery = (() => {
 
   function addCard(memory, prepend = true) {
     const date = memory.date
-      ? new Date(memory.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-      : '';
+      ? new Date(memory.date).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "";
 
-    const card = document.createElement('div');
-    card.className = 'gallery-card';
+    const card = document.createElement("div");
+    card.className = "gallery-card";
     card.dataset.id = memory.id;
     card.dataset.cat = memory.category;
     card.innerHTML = `
       <img src="${memory.thumbnail || memory.image}" alt="" loading="lazy" />
       <div class="gallery-card-info">
-        <div class="gallery-card-caption">${escHtml(memory.caption || 'Untitled memory')}</div>
-        ${date ? `<div class="gallery-card-date">${date}</div>` : ''}
+        <div class="gallery-card-caption">${escHtml(memory.caption || "Untitled memory")}</div>
+        ${date ? `<div class="gallery-card-date">${date}</div>` : ""}
       </div>`;
 
-    card.addEventListener('click', () => {
+    card.addEventListener("click", () => {
       close();
       MapModule.flyTo(memory.lat, memory.lng, 14);
       setTimeout(() => ViewModal.open(memory.id), 900);
@@ -783,123 +858,137 @@ const Gallery = (() => {
 
   function applyFilter(category) {
     activeFilter = category;
-    filterBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.cat === category));
+    filterBtns.forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset.cat === category),
+    );
 
-    grid.querySelectorAll('.gallery-card').forEach(card => {
-      card.style.display = category === 'all' || card.dataset.cat === category ? '' : 'none';
+    grid.querySelectorAll(".gallery-card").forEach((card) => {
+      card.style.display =
+        category === "all" || card.dataset.cat === category ? "" : "none";
     });
 
     updateEmpty();
   }
 
   function updateEmpty() {
-    const visibleCards = [...grid.querySelectorAll('.gallery-card')].filter(card => card.style.display !== 'none');
-    emptyMsg.classList.toggle('visible', visibleCards.length === 0);
+    const visibleCards = [...grid.querySelectorAll(".gallery-card")].filter(
+      (card) => card.style.display !== "none",
+    );
+    emptyMsg.classList.toggle("visible", visibleCards.length === 0);
   }
 
-  filterBtns.forEach(btn => {
-    btn.addEventListener('click', () => applyFilter(btn.dataset.cat));
+  filterBtns.forEach((btn) => {
+    btn.addEventListener("click", () => applyFilter(btn.dataset.cat));
   });
 
-  document.getElementById('gallery-close').addEventListener('click', close);
+  document.getElementById("gallery-close").addEventListener("click", close);
 
   return { open, close, toggle, addCard, removeCard };
 })();
 
 const UI = (() => {
-  const hint = document.getElementById('map-hint');
-  const cityPills = document.getElementById('city-pills');
-  const editBtn = document.getElementById('btn-edit-mode');
-  const editLabel = document.getElementById('edit-mode-label');
+  const hint = document.getElementById("map-hint");
+  const cityPills = document.getElementById("city-pills");
+  const editBtn = document.getElementById("btn-edit-mode");
+  const editLabel = document.getElementById("edit-mode-label");
   let hintDismissed = false;
   let editingEnabled = false;
 
   function init() {
-    document.getElementById('btn-world').addEventListener('click', () => {
+    document.getElementById("btn-world").addEventListener("click", () => {
       MapModule.flyToWorld();
-      setActive('btn-world');
-      cityPills.classList.remove('visible');
+      setActive("btn-world");
+      cityPills.classList.remove("visible");
     });
 
-    document.getElementById('btn-vietnam').addEventListener('click', () => {
+    document.getElementById("btn-vietnam").addEventListener("click", () => {
       MapModule.flyToVietnam();
-      setActive('btn-vietnam');
-      cityPills.classList.add('visible');
+      setActive("btn-vietnam");
+      cityPills.classList.add("visible");
     });
 
-    document.getElementById('btn-gallery').addEventListener('click', () => {
+    document.getElementById("btn-gallery").addEventListener("click", () => {
       Gallery.toggle();
     });
 
-    editBtn.addEventListener('click', () => {
+    editBtn.addEventListener("click", () => {
       if (editingEnabled) {
         lockOwnerMode();
         return;
       }
 
-      PasscodeModal.open(async passcode => {
+      PasscodeModal.open(async (passcode) => {
         await Storage.verifyOwnerPasscode(passcode);
         setEditingEnabled(true);
       });
     });
 
-    document.querySelectorAll('.city-pill').forEach(pill => {
-      pill.addEventListener('click', () => {
+    document.querySelectorAll(".city-pill").forEach((pill) => {
+      pill.addEventListener("click", () => {
         MapModule.flyTo(Number(pill.dataset.lat), Number(pill.dataset.lng), 12);
       });
     });
 
     const map = MapModule.getMap();
-    setActive('btn-vietnam');
-    cityPills.classList.add('visible');
+    setActive("btn-vietnam");
+    cityPills.classList.add("visible");
     setEditingEnabled(Storage.isOwnerSessionUnlocked());
 
-    map.on('click', event => {
+    map.on("click", (event) => {
       if (!editingEnabled) return;
 
       if (!hintDismissed) {
         hintDismissed = true;
-        hint.classList.add('hidden');
+        hint.classList.add("hidden");
       }
 
       UploadModal.open(event.latlng);
     });
 
-    map.on('zoomend', () => {
+    map.on("zoomend", () => {
       const zoom = map.getZoom();
       const center = map.getCenter();
-      const inVietnam = center.lat > 8 && center.lat < 24 && center.lng > 102 && center.lng < 110;
+      const inVietnam =
+        center.lat > 8 &&
+        center.lat < 24 &&
+        center.lng > 102 &&
+        center.lng < 110;
 
       if (inVietnam && zoom >= 5) {
-        cityPills.classList.add('visible');
-        setActive('btn-vietnam');
+        cityPills.classList.add("visible");
+        setActive("btn-vietnam");
       } else if (zoom < 4) {
-        cityPills.classList.remove('visible');
-        setActive('btn-world');
+        cityPills.classList.remove("visible");
+        setActive("btn-world");
       }
     });
   }
 
   function setActive(id) {
-    document.querySelectorAll('.nav-btn:not(.nav-btn-edit)').forEach(btn => btn.classList.remove('active'));
+    document
+      .querySelectorAll(".nav-btn:not(.nav-btn-edit)")
+      .forEach((btn) => btn.classList.remove("active"));
     const target = document.getElementById(id);
     if (target) {
-      target.classList.add('active');
+      target.classList.add("active");
     }
   }
 
   async function updateCount() {
     const memories = await Storage.getAll();
-    document.getElementById('memory-count').textContent = memories.length;
+    document.getElementById("memory-count").textContent = memories.length;
   }
 
   function setEditingEnabled(enabled) {
     editingEnabled = enabled;
-    editLabel.textContent = enabled ? 'Owner: Edit Enabled' : 'Owner: View Only';
-    editBtn.classList.toggle('active', enabled);
-    editBtn.classList.toggle('off', !enabled);
-    editBtn.title = enabled ? 'Lock owner mode' : 'Unlock owner mode';
-    document.body.classList.toggle('editing-disabled', !enabled);
+    hint.classList.toggle("hidden", !enabled);
+    editLabel.textContent = enabled
+      ? "Owner: Edit Enabled"
+      : "Owner: View Only";
+    editBtn.classList.toggle("active", enabled);
+    editBtn.classList.toggle("off", !enabled);
+    editBtn.title = enabled ? "Lock owner mode" : "Unlock owner mode";
+    document.body.classList.toggle("editing-disabled", !enabled);
 
     if (!enabled) {
       UploadModal.close();
@@ -924,19 +1013,35 @@ const UI = (() => {
 
 function escHtml(value) {
   return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
-window.ViewModal = ViewModal;
-window.Markers = Markers;
+let toastTimer = null;
+function showToast(message) {
+  const el = document.getElementById("toast");
+  el.textContent = message;
+  el.classList.add("visible");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("visible"), 2500);
+}
 
 async function boot() {
-  const map = MapModule.init();
+  const map = await MapModule.init();
   Markers.init(map);
   UI.init();
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      ViewModal.close();
+      UploadModal.close();
+      PasscodeModal.close();
+      Gallery.close();
+    }
+  });
 
   try {
     const memories = await Storage.getAll(true);
@@ -949,12 +1054,12 @@ async function boot() {
 
     UI.updateCount();
   } catch (error) {
-    console.warn('Could not load memories:', error);
+    console.warn("Could not load memories:", error);
   }
 
-  const loading = document.getElementById('loading-overlay');
-  loading.classList.add('hidden');
+  const loading = document.getElementById("loading-overlay");
+  loading.classList.add("hidden");
   setTimeout(() => loading.remove(), 600);
 }
 
-document.addEventListener('DOMContentLoaded', boot);
+document.addEventListener("DOMContentLoaded", boot);
