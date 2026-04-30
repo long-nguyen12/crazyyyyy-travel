@@ -1014,6 +1014,11 @@ const Gallery = (() => {
 
   let activeFilter = "all";
 
+  function coverImage(memory) {
+    const firstImage = memory.images && memory.images.length ? memory.images[0] : null;
+    return (firstImage && (firstImage.thumbnail || firstImage.image)) || memory.thumbnail || memory.image || "";
+  }
+
   function open() {
     panel.classList.add("open");
     document.getElementById("btn-gallery").classList.add("active");
@@ -1040,13 +1045,14 @@ const Gallery = (() => {
           year: "numeric",
         })
       : "";
+    const imageSrc = coverImage(memory);
 
     const card = document.createElement("div");
     card.className = "gallery-card";
     card.dataset.id = memory.id;
     card.dataset.cat = memory.category;
     card.innerHTML = `
-      <img src="${memory.thumbnail || memory.image}" alt="" loading="lazy" />
+      <img src="${escHtml(imageSrc)}" alt="" loading="lazy" />
       <div class="gallery-card-info">
         <div class="gallery-card-caption">${escHtml(memory.caption || "Untitled memory")}</div>
         ${date ? `<div class="gallery-card-date">${date}</div>` : ""}
@@ -1089,9 +1095,10 @@ const Gallery = (() => {
           year: "numeric",
         })
       : "";
+    const imageSrc = coverImage(memory);
 
     card.innerHTML = `
-      <img src="${memory.thumbnail || memory.image}" alt="" loading="lazy" />
+      <img src="${escHtml(imageSrc)}" alt="" loading="lazy" />
       <div class="gallery-card-info">
         <div class="gallery-card-caption">${escHtml(memory.caption || "Untitled memory")}</div>
         ${date ? `<div class="gallery-card-date">${date}</div>` : ""}
