@@ -237,6 +237,25 @@ body.editing-disabled #map {
 .marker-cat-culture   .marker-pin { box-shadow: inset 0 0 0 2px var(--gold); }
 .marker-cat-culture   .marker-tail { background: var(--gold); }
 
+.leaflet-tooltip.memory-marker-caption {
+  padding: 4px 8px;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: var(--radius-sm);
+  background: rgba(13,17,23,0.82);
+  color: var(--parchment);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.2;
+  max-width: 160px;
+  white-space: normal;
+  pointer-events: none;
+}
+
+.leaflet-tooltip.memory-marker-caption::before {
+  display: none;
+}
+
 /* ─── Map hint ───────────────────────────────────────────── */
 .map-hint {
   position: fixed;

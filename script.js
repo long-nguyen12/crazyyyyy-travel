@@ -309,6 +309,10 @@ const Markers = (() => {
     return label.charAt(0).toUpperCase();
   }
 
+  function markerCaption(memory) {
+    return escHtml(memory.caption || "Untitled memory");
+  }
+
   function createIcon(memory) {
     const catClass = `marker-cat-${memory.category || "travel"}`;
     const imgSrc = memory.images && memory.images.length ? memory.images[0].thumbnail : null;
@@ -368,6 +372,12 @@ const Markers = (() => {
       ViewModal.open(memory.id);
     });
 
+    marker.bindTooltip(markerCaption(memory), {
+      permanent: true,
+      direction: "right",
+      offset: [14, -28],
+      className: "memory-marker-caption",
+    });
     marker.bindPopup(buildPopupHtml(memory), { maxWidth: 260, className: "" });
     marker.on("popupopen", () => {
       marker.setPopupContent(buildPopupHtml(memoryMap[memory.id]));
@@ -413,6 +423,7 @@ const Markers = (() => {
     memoryMap[memory.id] = memory;
     if (markerMap[memory.id]) {
       markerMap[memory.id].setIcon(createIcon(memory));
+      markerMap[memory.id].setTooltipContent(markerCaption(memory));
       markerMap[memory.id].setPopupContent(buildPopupHtml(memory));
     }
   }
