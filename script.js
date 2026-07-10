@@ -1,8 +1,6 @@
 "use strict";
 
 const API_CONFIG = {
-  // Leave empty when the site and Worker share a host.
-  // Set this to your Worker origin when the API is deployed separately.
   baseUrl: "https://wandermark-api.crazyyyyy-travel.workers.dev/",
 };
 
@@ -226,11 +224,7 @@ const Storage = (() => {
 const MapModule = (() => {
   let map = null;
 
-  const VIETNAM_BOUNDS = [
-    [8.18, 102.14],
-    [23.39, 109.46],
-  ];
-  const EU_VIEW = { center: [48, 10], zoom: 4 };
+  const EU_VIEW = { center: [48, 10], zoom: 5 };
   const VIETNAM_VIEW = { center: [16.5, 106.5], zoom: 6 };
 
   async function init() {
@@ -269,16 +263,6 @@ const MapModule = (() => {
       autoClose: false,
       closeOnClick: false,
     };
-
-    // L.popup(popupOptions)
-    //   .setLatLng([16.5, 112.0])
-    //   .setContent("Hoàng Sa")
-    //   .openOn(map);
-
-    // L.popup(popupOptions)
-    //   .setLatLng([10.487044, 113.250166])
-    //   .setContent("Trường Sa")
-    //   .openOn(map);
   }
 
   function flyToEurope() {
@@ -289,10 +273,9 @@ const MapModule = (() => {
   }
 
   function flyToVietnam() {
-    map.flyToBounds(VIETNAM_BOUNDS, {
-      padding: [40, 40],
-      duration: 1.5,
-      easeLinearity: 0.25,
+    map.flyTo(VIETNAM_VIEW.center, VIETNAM_VIEW.zoom, {
+      duration: 1.2,
+      easeLinearity: 0.3,
     });
   }
 
@@ -1156,7 +1139,7 @@ const Gallery = (() => {
 
     card.addEventListener("click", () => {
       close();
-      MapModule.flyTo(memory.lat, memory.lng, 14);
+      MapModule.flyTo(memory.lat, memory.lng, 10);
       setTimeout(() => ViewModal.open(memory.id), 900);
     });
 
