@@ -108,7 +108,7 @@ body {
   font-size: 13px;
   font-weight: 400;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.2s, background-color 0.2s, border-color 0.2s;
 }
 .nav-btn svg {
   width: 14px; height: 14px;
@@ -311,7 +311,7 @@ body.editing-disabled #map {
   font-family: var(--font-body);
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.2s, background-color 0.2s, border-color 0.2s, transform 0.2s;
   backdrop-filter: blur(8px);
 }
 .city-pill:hover {
@@ -347,8 +347,8 @@ body.editing-disabled #map {
   border-radius: var(--radius-lg);
   padding: 32px;
   width: 100%;
-  max-width: 480px;
-  max-height: 90vh;
+  max-width: 560px;
+  max-height: 100vh;
   overflow-y: auto;
   position: relative;
   transform: translateY(20px) scale(0.97);
@@ -372,7 +372,7 @@ body.editing-disabled #map {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: color 0.2s, background-color 0.2s, border-color 0.2s;
 }
 .modal-close:hover { background: rgba(255,255,255,0.08); color: var(--text-1); }
 
@@ -399,7 +399,7 @@ body.editing-disabled #map {
   padding: 32px 20px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.2s, background-color 0.2s, border-color 0.2s;
   margin-bottom: 20px;
   color: var(--text-2);
 }
@@ -498,7 +498,7 @@ body.editing-disabled #map {
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, opacity 0.2s, transform 0.2s;
 }
 .btn-primary:hover:not(:disabled) { background: var(--copper-lt); transform: translateY(-1px); }
 .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
@@ -512,7 +512,7 @@ body.editing-disabled #map {
   font-family: var(--font-body);
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.2s, background-color 0.2s, border-color 0.2s;
 }
 .btn-ghost:hover { border-color: var(--border-hi); color: var(--text-1); }
 
@@ -525,27 +525,29 @@ body.editing-disabled #map {
   font-family: var(--font-body);
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s;
 }
 .btn-danger:hover { background: rgba(220,60,60,0.1); border-color: rgba(220,60,60,0.6); }
 
 /* ─── View modal ─────────────────────────────────────────── */
 .modal-view {
-  max-width: 560px;
+  max-width: 720px;
   padding: 0;
   overflow: hidden;
 }
 .view-image-wrap {
   position: relative;
   width: 100%;
-  height: 300px;
+  height: 400px;
   overflow: hidden;
+  align-items: center;
+  justify-content: center;
 }
 .view-image {
-  width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: fill;
   display: block;
+  justify-self: center;
 }
 .view-category-badge {
   position: absolute;
@@ -634,7 +636,7 @@ body.editing-disabled #map {
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s;
+  transition: color 0.2s, background-color 0.2s, border-color 0.2s;
 }
 .filter-btn:hover, .filter-btn.active {
   background: rgba(201,132,90,0.12);
@@ -805,7 +807,7 @@ body.editing-disabled #map {
   font-size: 11px;
   cursor: pointer;
   font-family: var(--font-body);
-  transition: all 0.2s;
+  transition: color 0.2s, background-color 0.2s, border-color 0.2s;
 }
 .popup-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-1); }
 .popup-btn-open { border-color: rgba(201,132,90,0.4); color: var(--copper); }

@@ -13,6 +13,7 @@ const OWNER_ACCESS = {
 const Storage = (() => {
   const apiRoot = API_CONFIG.baseUrl.replace(/\/$/, "");
   let memoriesCache = null;
+  let memoriesRequest = null;
 
   function buildUrl(path) {
     return `${apiRoot}${path}`;
@@ -82,13 +83,26 @@ const Storage = (() => {
       return [...memoriesCache];
     }
 
-    const response = await request("/api/memories");
-    const payload = await response.json();
-    const memories = Array.isArray(payload.memories)
-      ? payload.memories.map(normalizeMemory)
-      : [];
+    if (!forceRefresh && memoriesRequest) {
+      const memories = await memoriesRequest;
+      return [...memories];
+    }
 
-    memoriesCache = memories;
+    memoriesRequest = request("/api/memories")
+      .then((response) => response.json())
+      .then((payload) => {
+        const memories = Array.isArray(payload.memories)
+          ? payload.memories.map(normalizeMemory)
+          : [];
+
+        memoriesCache = memories;
+        return memories;
+      })
+      .finally(() => {
+        memoriesRequest = null;
+      });
+
+    const memories = await memoriesRequest;
     return [...memories];
   }
 
@@ -192,11 +206,16 @@ const Storage = (() => {
     return Boolean(getOwnerPasscode());
   }
 
+  function getCachedCount() {
+    return memoriesCache ? memoriesCache.length : null;
+  }
+
   return {
     clearOwnerPasscode,
     create,
     getAll,
     getById,
+    getCachedCount,
     isOwnerSessionUnlocked,
     remove,
     update,
@@ -223,7 +242,7 @@ const MapModule = (() => {
       minZoom: 2,
     });
 
-    L.tileLayer("http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
+    L.tileLayer("https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
       subdomains: ["mt0", "mt1", "mt2", "mt3"],
       attribution:
         '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
@@ -240,8 +259,26 @@ const MapModule = (() => {
       },
     }).addTo(map);
 
+    addTerritoryPopups();
     map.zoomControl.setPosition("bottomright");
     return map;
+  }
+
+  function addTerritoryPopups() {
+    const popupOptions = {
+      autoClose: false,
+      closeOnClick: false,
+    };
+
+    // L.popup(popupOptions)
+    //   .setLatLng([16.5, 112.0])
+    //   .setContent("Hoàng Sa")
+    //   .openOn(map);
+
+    // L.popup(popupOptions)
+    //   .setLatLng([10.487044, 113.250166])
+    //   .setContent("Trường Sa")
+    //   .openOn(map);
   }
 
   function flyToEurope() {
@@ -361,7 +398,7 @@ const Markers = (() => {
     `;
   }
 
-  function addMarker(memory, map) {
+  function createMarker(memory) {
     memoryMap[memory.id] = memory;
 
     const marker = L.marker([memory.lat, memory.lng], {
@@ -390,8 +427,17 @@ const Markers = (() => {
         delBtn.addEventListener("click", () => Markers.deleteById(memory.id));
     });
 
-    clusterGroup.addLayer(marker);
     markerMap[memory.id] = marker;
+    return marker;
+  }
+
+  function addMarker(memory) {
+    clusterGroup.addLayer(createMarker(memory));
+  }
+
+  function addMarkers(memories) {
+    const markers = memories.map(createMarker);
+    clusterGroup.addLayers(markers);
   }
 
   function removeMarker(id) {
@@ -428,12 +474,13 @@ const Markers = (() => {
     }
   }
 
-  return { init, addMarker, deleteById, refreshPopups, removeMarker, updateMarker };
+  return { init, addMarker, addMarkers, deleteById, refreshPopups, removeMarker, updateMarker };
 })();
 
 const UploadModal = (() => {
   let pendingLatLng = null;
   let pendingImageDataURLs = [];
+  let fileSelectionId = 0;
 
   const overlay = document.getElementById("upload-modal");
   const zone = document.getElementById("upload-zone");
@@ -472,6 +519,7 @@ const UploadModal = (() => {
     overlay.classList.remove("open");
     pendingLatLng = null;
     pendingImageDataURLs = [];
+    fileSelectionId += 1;
   }
 
   function resetZone() {
@@ -568,6 +616,7 @@ const UploadModal = (() => {
   }
 
   async function handleFiles(files) {
+    const selectionId = (fileSelectionId += 1);
     const validFiles = Array.from(files || []).filter((file) =>
       file.type.startsWith("image/"),
     );
@@ -579,9 +628,28 @@ const UploadModal = (() => {
       return;
     }
 
-    const compressed = await Promise.all(
-      validFiles.map((file) => compressImage(file)),
-    );
+    saveBtn.disabled = true;
+    selection.textContent = `Preparing 0 / ${validFiles.length} images...`;
+    selection.classList.add("visible");
+
+    const compressed = [];
+    try {
+      for (let index = 0; index < validFiles.length; index += 1) {
+        const imageDataURL = await compressImage(validFiles[index]);
+        if (selectionId !== fileSelectionId) return;
+        compressed.push(imageDataURL);
+        selection.textContent = `Preparing ${index + 1} / ${validFiles.length} images...`;
+        await yieldToBrowser();
+      }
+    } catch {
+      if (selectionId === fileSelectionId) {
+        alert("Could not process the selected images.");
+        resetZone();
+        saveBtn.disabled = true;
+      }
+      return;
+    }
+
     pendingImageDataURLs = compressed;
 
     preview.src = compressed[0];
@@ -636,14 +704,20 @@ const UploadModal = (() => {
 
       const imagesToUpload = [];
       for (let index = 0; index < pendingImageDataURLs.length; index += 1) {
+        saveBtn.textContent =
+          pendingImageDataURLs.length > 1
+            ? `Preparing ${index + 1} / ${pendingImageDataURLs.length}...`
+            : "Preparing...";
         const imageDataURL = pendingImageDataURLs[index];
         const thumbnailDataURL = await makeThumbnail(imageDataURL);
         imagesToUpload.push({
           imageFile: dataURLToFile(imageDataURL, `memory-${index + 1}.jpg`),
           thumbnailFile: dataURLToFile(thumbnailDataURL, `thumb-${index + 1}.jpg`),
         });
+        await yieldToBrowser();
       }
 
+      saveBtn.textContent = "Uploading...";
       const memory = await Storage.create({
         images: imagesToUpload,
         caption: baseCaption,
@@ -933,8 +1007,13 @@ const EditModal = (() => {
     const files = Array.from(event.target.files || []).filter(f => f.type.startsWith("image/"));
     for (const file of files) {
       if (file.size > 8 * 1024 * 1024) { alert(`"${file.name}" is too large.`); continue; }
-      const compressed = await UploadModal.compressImage(file);
-      pendingNewImageDataURLs.push(compressed);
+      try {
+        const compressed = await UploadModal.compressImage(file);
+        pendingNewImageDataURLs.push(compressed);
+      } catch {
+        alert(`Could not process "${file.name}".`);
+      }
+      await yieldToBrowser();
     }
     fileInput.value = "";
     renderImages();
@@ -979,14 +1058,20 @@ const EditModal = (() => {
     try {
       const newImages = [];
       for (let i = 0; i < pendingNewImageDataURLs.length; i++) {
+        saveBtn.textContent =
+          pendingNewImageDataURLs.length > 1
+            ? `Preparing ${i + 1} / ${pendingNewImageDataURLs.length}...`
+            : "Preparing...";
         const dataUrl = pendingNewImageDataURLs[i];
         const thumbUrl = await UploadModal.makeThumbnail(dataUrl);
         newImages.push({
           imageFile: UploadModal.dataURLToFile(dataUrl, `new-${i}.jpg`),
           thumbnailFile: UploadModal.dataURLToFile(thumbUrl, `new-thumb-${i}.jpg`)
         });
+        await yieldToBrowser();
       }
 
+      saveBtn.textContent = "Uploading...";
       const updatedMemory = await Storage.update(currentId, {
         caption: captionInput.value.trim(),
         date: dateInput.value,
@@ -1048,7 +1133,7 @@ const Gallery = (() => {
     open();
   }
 
-  function addCard(memory, prepend = true) {
+  function createCard(memory) {
     const date = memory.date
       ? new Date(memory.date).toLocaleDateString("en-GB", {
           day: "numeric",
@@ -1075,6 +1160,12 @@ const Gallery = (() => {
       setTimeout(() => ViewModal.open(memory.id), 900);
     });
 
+    return card;
+  }
+
+  function addCard(memory, prepend = true) {
+    const card = createCard(memory);
+
     if (prepend && grid.firstChild) {
       grid.insertBefore(card, grid.firstChild);
     } else {
@@ -1083,6 +1174,17 @@ const Gallery = (() => {
 
     applyFilter(activeFilter);
     updateEmpty();
+  }
+
+  function render(memories) {
+    const fragment = document.createDocumentFragment();
+    memories.forEach((memory) => {
+      fragment.appendChild(createCard(memory));
+    });
+
+    grid.textContent = "";
+    grid.appendChild(fragment);
+    applyFilter(activeFilter);
   }
 
   function removeCard(id) {
@@ -1145,13 +1247,11 @@ const Gallery = (() => {
 
   document.getElementById("gallery-close").addEventListener("click", close);
 
-  return { open, close, toggle, addCard, removeCard, updateCard };
+  return { open, close, toggle, addCard, removeCard, render, updateCard };
 })();
 
 const UI = (() => {
   const hint = document.getElementById("map-hint");
-  const cityPills = document.getElementById("city-pills");
-  const euPills = document.getElementById("city-pills-eu");
   const editBtn = document.getElementById("btn-edit-mode");
   const editLabel = document.getElementById("edit-mode-label");
   let hintDismissed = false;
@@ -1161,15 +1261,11 @@ const UI = (() => {
     document.getElementById("btn-world").addEventListener("click", () => {
       MapModule.flyToEurope();
       setActive("btn-world");
-      euPills.classList.add("visible");
-      cityPills.classList.remove("visible");
     });
 
     document.getElementById("btn-vietnam").addEventListener("click", () => {
       MapModule.flyToVietnam();
       setActive("btn-vietnam");
-      cityPills.classList.add("visible");
-      euPills.classList.remove("visible");
     });
 
     document.getElementById("btn-gallery").addEventListener("click", () => {
@@ -1188,15 +1284,8 @@ const UI = (() => {
       });
     });
 
-    document.querySelectorAll("#city-pills .city-pill, #city-pills-eu .city-pill").forEach((pill) => {
-      pill.addEventListener("click", () => {
-        MapModule.flyTo(Number(pill.dataset.lat), Number(pill.dataset.lng), 12);
-      });
-    });
-
     const map = MapModule.getMap();
     setActive("btn-vietnam");
-    cityPills.classList.add("visible");
     setEditingEnabled(Storage.isOwnerSessionUnlocked());
 
     map.on("click", (event) => {
@@ -1224,18 +1313,18 @@ const UI = (() => {
         center.lng > -25 &&
         center.lng < 40;
 
-      if (inVietnam && zoom >= 5) {
-        cityPills.classList.add("visible");
-        euPills.classList.remove("visible");
-        setActive("btn-vietnam");
-      } else if (inEurope && zoom >= 4) {
-        euPills.classList.add("visible");
-        cityPills.classList.remove("visible");
-        setActive("btn-world");
-      } else if (zoom < 3) {
-        cityPills.classList.remove("visible");
-        euPills.classList.remove("visible");
-      }
+      // if (inVietnam && zoom >= 5) {
+      //   cityPills.classList.add("visible");
+      //   euPills.classList.remove("visible");
+      //   setActive("btn-vietnam");
+      // } else if (inEurope && zoom >= 4) {
+      //   euPills.classList.add("visible");
+      //   cityPills.classList.remove("visible");
+      //   setActive("btn-world");
+      // } else if (zoom < 3) {
+      //   cityPills.classList.remove("visible");
+      //   euPills.classList.remove("visible");
+      // }
     });
   }
 
@@ -1249,9 +1338,16 @@ const UI = (() => {
     }
   }
 
-  async function updateCount() {
-    const memories = await Storage.getAll();
-    document.getElementById("memory-count").textContent = memories.length;
+  async function updateCount(count) {
+    let nextCount = count;
+
+    if (typeof nextCount !== "number") {
+      const cachedCount = Storage.getCachedCount();
+      nextCount =
+        typeof cachedCount === "number" ? cachedCount : (await Storage.getAll()).length;
+    }
+
+    document.getElementById("memory-count").textContent = nextCount;
   }
 
   function setEditingEnabled(enabled) {
@@ -1304,7 +1400,19 @@ function showToast(message) {
   toastTimer = setTimeout(() => el.classList.remove("visible"), 2500);
 }
 
+function yieldToBrowser() {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve());
+      return;
+    }
+
+    setTimeout(resolve, 0);
+  });
+}
+
 async function boot() {
+  const memoriesPromise = Storage.getAll(true);
   const map = await MapModule.init();
   Markers.init(map);
   UI.init();
@@ -1320,15 +1428,12 @@ async function boot() {
   });
 
   try {
-    const memories = await Storage.getAll(true);
+    const memories = await memoriesPromise;
     memories.sort((left, right) => left.createdAt - right.createdAt);
 
-    for (const memory of memories) {
-      Markers.addMarker(memory, map);
-      Gallery.addCard(memory, false);
-    }
-
-    UI.updateCount();
+    Markers.addMarkers(memories);
+    Gallery.render(memories);
+    UI.updateCount(memories.length);
   } catch (error) {
     console.warn("Could not load memories:", error);
   }

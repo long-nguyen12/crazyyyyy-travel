@@ -1,0 +1,14 @@
+name = "wandermark-api"
+main = "worker.js"
+compatibility_date = "2026-04-27"
+
+[assets]
+directory = "."
+run_worker_first = ["/api/*"]
+
+[[r2_buckets]]
+binding = "MEMORY_IMAGES"
+bucket_name = "longnh-travel"
+
+[vars]
+ALLOWED_ORIGIN = "*"
