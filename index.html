@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Travel Map</title>
+  <title>Wandermark — A map of memories</title>
+  <meta name="description" content="A personal travel journal, told through places, photographs, and memories." />
+  <meta name="theme-color" content="#172a46" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -19,45 +22,66 @@
 </head>
 <body>
   <header class="app-header">
-    <div class="logo">
-      <span class="logo-text">Crazyyyyy</span>
-    </div>
+    <a class="logo" href="#" aria-label="Wandermark home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="15"/><path d="m25.8 14.2-3.2 8.4-8.4 3.2 3.2-8.4 8.4-3.2Z"/><circle cx="20" cy="20" r="1.8"/></svg>
+      </span>
+      <span class="logo-copy">
+        <span class="logo-text">Wandermark</span>
+        <span class="logo-tagline">A map of memories</span>
+      </span>
+    </a>
 
-    <nav class="header-nav">
-      <button class="nav-btn active" id="btn-vietnam" title="Go to Vietnam">
+    <nav class="header-nav" aria-label="Map views">
+      <button class="nav-btn active" id="btn-vietnam" type="button" title="Go to Vietnam" aria-pressed="true">
         <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
         <span>Việt Nam</span>
       </button>
-      <button class="nav-btn" id="btn-world" title="Go to Europe">
+      <button class="nav-btn" id="btn-world" type="button" title="Go to Europe" aria-pressed="false">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
         <span>Europe</span>
       </button>
-      <button class="nav-btn" id="btn-gallery" title="Gallery">
+      <button class="nav-btn" id="btn-gallery" type="button" title="Open memory gallery" aria-expanded="false" aria-controls="gallery-panel">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        <span>Gallery</span>
-      </button>
-      <button class="nav-btn nav-btn-edit off" id="btn-edit-mode" title="Toggle editing mode">
-        <svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="M13 7l4 4"/></svg>
-        <span id="edit-mode-label">Owner: View Only</span>
+        <span>Memories</span>
       </button>
     </nav>
 
-    <div class="header-stats">
-      <span id="memory-count">0</span> memories
+    <div class="header-stats" aria-live="polite">
+      <span class="header-stats-number" id="memory-count">0</span>
+      <span class="header-stats-label">memories<br />collected</span>
     </div>
+
+    <button class="nav-btn nav-btn-edit off" id="btn-edit-mode" type="button" title="Unlock owner mode" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M7 11V8a5 5 0 0 1 10 0v3"/><rect x="5" y="11" width="14" height="10" rx="2"/></svg>
+      <span id="edit-mode-label">Owner mode</span>
+    </button>
   </header>
 
-  <div id="map"></div>
+  <main>
+    <div id="map" aria-label="Interactive map of travel memories"></div>
+
+    <section class="map-story" aria-labelledby="map-story-title">
+      <p class="map-story-kicker"><span></span> Personal travel atlas</p>
+      <h1 id="map-story-title">Every place<br />leaves a <em>mark.</em></h1>
+      <p class="map-story-copy">A living collection of the people, flavors, and places worth finding again.</p>
+      <div class="map-story-footer">
+        <span class="map-story-pin" aria-hidden="true"></span>
+        <span>Exploring <strong id="active-region-label">Việt Nam</strong></span>
+      </div>
+    </section>
+  </main>
 
   <div class="map-hint" id="map-hint">
     <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm-1-5h2v2h-2zm0-8h2v6h-2z"/></svg>
-    Click anywhere on the map to drop a memory
+    <span id="map-hint-text">Select a marker to revisit a memory</span>
   </div>
 
-  <div class="modal-overlay" id="upload-modal">
-    <div class="modal" id="upload-modal-box">
-      <button class="modal-close" id="upload-close">✕</button>
-      <h2 class="modal-title">Drop a Memory</h2>
+  <div class="modal-overlay" id="upload-modal" aria-hidden="true" inert>
+    <div class="modal" id="upload-modal-box" role="dialog" aria-modal="true" aria-labelledby="upload-title">
+      <button class="modal-close" id="upload-close" type="button" aria-label="Close upload dialog">✕</button>
+      <p class="modal-kicker">New story</p>
+      <h2 class="modal-title" id="upload-title">Drop a Memory</h2>
       <p class="modal-sub" id="upload-location-label">Loading location...</p>
 
       <div class="upload-zone" id="upload-zone">
@@ -65,18 +89,21 @@
         <div class="upload-icon">
           <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </div>
-        <p>Drop image here or <span class="upload-link">browse</span></p>
-        <p class="upload-hint">JPEG · PNG · WebP - max 8 MB</p>
+        <p>Drop images here or <span class="upload-link">browse</span></p>
+        <p class="upload-hint">JPEG · PNG · WebP — max 8 MB each</p>
       </div>
 
-      <img class="upload-preview" id="upload-preview" alt="preview" />
+      <img class="upload-preview" id="upload-preview" alt="Selected photo preview" />
       <p class="upload-selection" id="upload-selection"></p>
 
       <div class="form-row">
+        <label class="sr-only" for="input-caption">Memory caption</label>
         <input class="text-input" id="input-caption" type="text" placeholder="Caption (optional)" maxlength="120" />
       </div>
       <div class="form-row">
+        <label class="sr-only" for="input-date">Date</label>
         <input class="text-input" id="input-date" type="date" />
+        <label class="sr-only" for="input-category">Category</label>
         <select class="text-input select-input" id="input-category">
           <option value="travel">Travel</option>
           <option value="food">Food</option>
@@ -93,14 +120,16 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="passcode-modal">
-    <div class="modal modal-passcode">
-      <button class="modal-close" id="passcode-close">✕</button>
-      <h2 class="modal-title">Owner Mode</h2>
+  <div class="modal-overlay" id="passcode-modal" aria-hidden="true" inert>
+    <div class="modal modal-passcode" role="dialog" aria-modal="true" aria-labelledby="passcode-title">
+      <button class="modal-close" id="passcode-close" type="button" aria-label="Close owner mode dialog">✕</button>
+      <p class="modal-kicker">Private access</p>
+      <h2 class="modal-title" id="passcode-title">Owner Mode</h2>
       <p class="modal-sub">Enter your passcode to unlock editing and uploads.</p>
 
       <form id="passcode-form">
         <div class="form-row form-row-stack">
+          <label class="sr-only" for="passcode-input">Owner passcode</label>
           <input class="text-input" id="passcode-input" type="password" placeholder="Passcode" autocomplete="current-password" />
           <p class="form-error" id="passcode-error"></p>
         </div>
@@ -113,13 +142,13 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="view-modal">
-    <div class="modal modal-view" id="view-modal-box">
-      <button class="modal-close" id="view-close">✕</button>
+  <div class="modal-overlay" id="view-modal" aria-hidden="true" inert>
+    <div class="modal modal-view" id="view-modal-box" role="dialog" aria-modal="true" aria-labelledby="view-caption">
+      <button class="modal-close" id="view-close" type="button" aria-label="Close memory">✕</button>
       <div class="view-image-wrap">
         <img class="view-image" id="view-image" alt="" />
-        <button class="view-slider-btn view-slider-prev" id="view-prev">❮</button>
-        <button class="view-slider-btn view-slider-next" id="view-next">❯</button>
+        <button class="view-slider-btn view-slider-prev" id="view-prev" type="button" aria-label="Previous photo">❮</button>
+        <button class="view-slider-btn view-slider-next" id="view-next" type="button" aria-label="Next photo">❯</button>
         <div class="view-slider-counter" id="view-counter"></div>
         <div class="view-category-badge" id="view-badge"></div>
       </div>
@@ -136,10 +165,11 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="edit-modal">
-    <div class="modal" id="edit-modal-box">
-      <button class="modal-close" id="edit-close">✕</button>
-      <h2 class="modal-title">Edit Memory</h2>
+  <div class="modal-overlay" id="edit-modal" aria-hidden="true" inert>
+    <div class="modal" id="edit-modal-box" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+      <button class="modal-close" id="edit-close" type="button" aria-label="Close edit dialog">✕</button>
+      <p class="modal-kicker">Refine the story</p>
+      <h2 class="modal-title" id="edit-title">Edit Memory</h2>
       <p class="modal-sub" id="edit-location-label"></p>
 
       <div class="edit-images-zone">
@@ -152,10 +182,13 @@
       </div>
 
       <div class="form-row">
+        <label class="sr-only" for="edit-input-caption">Memory caption</label>
         <input class="text-input" id="edit-input-caption" type="text" placeholder="Caption (optional)" maxlength="120" />
       </div>
       <div class="form-row">
+        <label class="sr-only" for="edit-input-date">Date</label>
         <input class="text-input" id="edit-input-date" type="date" />
+        <label class="sr-only" for="edit-input-category">Category</label>
         <select class="text-input select-input" id="edit-input-category">
           <option value="travel">Travel</option>
           <option value="food">Food</option>
@@ -172,22 +205,25 @@
     </div>
   </div>
 
-  <div class="gallery-panel" id="gallery-panel">
+  <aside class="gallery-panel" id="gallery-panel" aria-hidden="true" aria-labelledby="gallery-title" inert>
     <div class="gallery-header">
-      <h2>Your Memories</h2>
-      <button class="modal-close" id="gallery-close">✕</button>
+      <div>
+        <p class="modal-kicker">The collection</p>
+        <h2 id="gallery-title">Your Memories</h2>
+      </div>
+      <button class="modal-close" id="gallery-close" type="button" aria-label="Close memory gallery">✕</button>
     </div>
     <div class="gallery-filters" id="gallery-filters">
-      <button class="filter-btn active" data-cat="all">All</button>
-      <button class="filter-btn" data-cat="travel">Travel</button>
-      <button class="filter-btn" data-cat="food">Food</button>
-      <button class="filter-btn" data-cat="friends">Friends</button>
-      <button class="filter-btn" data-cat="nature">Nature</button>
-      <button class="filter-btn" data-cat="culture">Culture</button>
+      <button class="filter-btn active" type="button" data-cat="all" aria-pressed="true">All</button>
+      <button class="filter-btn" type="button" data-cat="travel" aria-pressed="false">Travel</button>
+      <button class="filter-btn" type="button" data-cat="food" aria-pressed="false">Food</button>
+      <button class="filter-btn" type="button" data-cat="friends" aria-pressed="false">Friends</button>
+      <button class="filter-btn" type="button" data-cat="nature" aria-pressed="false">Nature</button>
+      <button class="filter-btn" type="button" data-cat="culture" aria-pressed="false">Culture</button>
     </div>
     <div class="gallery-grid" id="gallery-grid"></div>
     <p class="gallery-empty" id="gallery-empty">No memories yet. Click on the map to add your first one.</p>
-  </div>
+  </aside>
 
   <div class="loading-overlay" id="loading-overlay">
     <div class="loading-content">
@@ -196,7 +232,7 @@
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="script.js"></script>
 </body>
 </html>

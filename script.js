@@ -495,11 +495,15 @@ const UploadModal = (() => {
       locLabel.textContent = name;
     });
 
+    overlay.inert = false;
     overlay.classList.add("open");
+    overlay.setAttribute("aria-hidden", "false");
   }
 
   function close() {
     overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.inert = true;
     pendingLatLng = null;
     pendingImageDataURLs = [];
     fileSelectionId += 1;
@@ -646,7 +650,7 @@ const UploadModal = (() => {
     saveBtn.disabled = false;
     saveBtn.textContent =
       compressed.length > 1
-        ? `Save ${compressed.length} Memories`
+        ? `Save Memory · ${compressed.length} photos`
         : "Save Memory";
   }
 
@@ -758,12 +762,16 @@ const PasscodeModal = (() => {
   function open(onSubmit) {
     submitHandler = onSubmit;
     reset();
+    overlay.inert = false;
     overlay.classList.add("open");
+    overlay.setAttribute("aria-hidden", "false");
     requestAnimationFrame(() => input.focus());
   }
 
   function close() {
     overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.inert = true;
     submitHandler = null;
   }
 
@@ -875,6 +883,9 @@ const ViewModal = (() => {
     imageIndex = 0;
 
     renderImage();
+    image.alt = memory.caption
+      ? `Photo from ${memory.caption}`
+      : "Travel memory photo";
     badge.textContent =
       CATEGORY_LABEL[memory.category] || memory.category || "Memory";
     caption.textContent = memory.caption || "Untitled memory";
@@ -888,12 +899,16 @@ const ViewModal = (() => {
     coords.textContent = `${memory.lat.toFixed(5)}°, ${memory.lng.toFixed(5)}°`;
     syncControls();
 
+    overlay.inert = false;
     overlay.classList.add("open");
+    overlay.setAttribute("aria-hidden", "false");
     MapModule.getMap().closePopup();
   }
 
   function close() {
     overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.inert = true;
     currentId = null;
   }
 
@@ -1019,11 +1034,15 @@ const EditModal = (() => {
     saveBtn.disabled = false;
     saveBtn.textContent = "Save Changes";
 
+    overlay.inert = false;
     overlay.classList.add("open");
+    overlay.setAttribute("aria-hidden", "false");
   }
 
   function close() {
     overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.inert = true;
     currentId = null;
   }
 
@@ -1095,17 +1114,23 @@ const Gallery = (() => {
 
   function coverImage(memory) {
     const firstImage = memory.images && memory.images.length ? memory.images[0] : null;
-    return (firstImage && (firstImage.thumbnail || firstImage.image)) || memory.thumbnail || memory.image || "";
+    return (firstImage && (firstImage.image || firstImage.thumbnail)) || memory.image || memory.thumbnail || "";
   }
 
   function open() {
+    panel.inert = false;
     panel.classList.add("open");
+    panel.setAttribute("aria-hidden", "false");
     document.getElementById("btn-gallery").classList.add("active");
+    document.getElementById("btn-gallery").setAttribute("aria-expanded", "true");
   }
 
   function close() {
     panel.classList.remove("open");
+    panel.setAttribute("aria-hidden", "true");
+    panel.inert = true;
     document.getElementById("btn-gallery").classList.remove("active");
+    document.getElementById("btn-gallery").setAttribute("aria-expanded", "false");
   }
 
   function toggle() {
@@ -1126,12 +1151,13 @@ const Gallery = (() => {
       : "";
     const imageSrc = coverImage(memory);
 
-    const card = document.createElement("div");
+    const card = document.createElement("button");
+    card.type = "button";
     card.className = "gallery-card";
     card.dataset.id = memory.id;
     card.dataset.cat = memory.category;
     card.innerHTML = `
-      <img src="${escHtml(imageSrc)}" alt="" loading="lazy" />
+      <img src="${escHtml(imageSrc)}" alt="${escHtml(memory.caption || "Travel memory")}" loading="lazy" />
       <div class="gallery-card-info">
         <div class="gallery-card-caption">${escHtml(memory.caption || "Untitled memory")}</div>
         ${date ? `<div class="gallery-card-date">${date}</div>` : ""}
@@ -1194,7 +1220,7 @@ const Gallery = (() => {
     const imageSrc = coverImage(memory);
 
     card.innerHTML = `
-      <img src="${escHtml(imageSrc)}" alt="" loading="lazy" />
+      <img src="${escHtml(imageSrc)}" alt="${escHtml(memory.caption || "Travel memory")}" loading="lazy" />
       <div class="gallery-card-info">
         <div class="gallery-card-caption">${escHtml(memory.caption || "Untitled memory")}</div>
         ${date ? `<div class="gallery-card-date">${date}</div>` : ""}
@@ -1205,9 +1231,11 @@ const Gallery = (() => {
 
   function applyFilter(category) {
     activeFilter = category;
-    filterBtns.forEach((btn) =>
-      btn.classList.toggle("active", btn.dataset.cat === category),
-    );
+    filterBtns.forEach((btn) => {
+      const isActive = btn.dataset.cat === category;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-pressed", String(isActive));
+    });
 
     grid.querySelectorAll(".gallery-card").forEach((card) => {
       card.style.display =
@@ -1235,6 +1263,7 @@ const Gallery = (() => {
 
 const UI = (() => {
   const hint = document.getElementById("map-hint");
+  const hintText = document.getElementById("map-hint-text");
   const editBtn = document.getElementById("btn-edit-mode");
   const editLabel = document.getElementById("edit-mode-label");
   let hintDismissed = false;
@@ -1319,6 +1348,16 @@ const UI = (() => {
     if (target) {
       target.classList.add("active");
     }
+
+    ["btn-vietnam", "btn-world"].forEach((buttonId) => {
+      document
+        .getElementById(buttonId)
+        .setAttribute("aria-pressed", String(buttonId === id));
+    });
+
+    const regionLabel = document.getElementById("active-region-label");
+    if (id === "btn-vietnam") regionLabel.textContent = "Việt Nam";
+    if (id === "btn-world") regionLabel.textContent = "Europe";
   }
 
   async function updateCount(count) {
@@ -1335,12 +1374,16 @@ const UI = (() => {
 
   function setEditingEnabled(enabled) {
     editingEnabled = enabled;
-    hint.classList.toggle("hidden", !enabled);
+    hintText.textContent = enabled
+      ? "Click anywhere on the map to drop a memory"
+      : "Select a marker to revisit a memory";
+    hint.classList.toggle("hidden", enabled && hintDismissed);
     editLabel.textContent = enabled
-      ? "Owner: Edit Enabled"
-      : "Owner: View Only";
+      ? "Editing on"
+      : "Owner mode";
     editBtn.classList.toggle("active", enabled);
     editBtn.classList.toggle("off", !enabled);
+    editBtn.setAttribute("aria-pressed", String(enabled));
     editBtn.title = enabled ? "Lock owner mode" : "Unlock owner mode";
     document.body.classList.toggle("editing-disabled", !enabled);
 
