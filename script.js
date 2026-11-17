@@ -244,25 +244,55 @@ const MapModule = (() => {
 
     L.geoJSON(await vietnamGeoJSON(), {
       style: {
-        color: "#da251d",
+        color: "#22d3ee",
         weight: 1.5,
-        opacity: 0.6,
-        fillColor: "#da251d",
-        fillOpacity: 0.06,
-        dashArray: "4 3",
+        opacity: 0.7,
+        fillColor: "#22d3ee",
+        fillOpacity: 0.07,
+        dashArray: "6 4",
       },
     }).addTo(map);
 
-    addTerritoryPopups();
+    addTerritoryFlags();
     map.zoomControl.setPosition("bottomright");
     return map;
   }
 
-  function addTerritoryPopups() {
-    const popupOptions = {
-      autoClose: false,
-      closeOnClick: false,
-    };
+  // Vietnam's archipelagos, marked with the national flag at their approximate centres
+  const TERRITORIES = [
+    { name: "Quần đảo Hoàng Sa", latlng: [16.5, 112.0] },
+    { name: "Quần đảo Trường Sa", latlng: [9.9, 114.3] },
+  ];
+  const FLAG_SVG = `
+    <svg viewBox="0 0 32 40" aria-hidden="true">
+      <line x1="3" y1="2" x2="3" y2="38" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" />
+      <rect x="4" y="3" width="24" height="16" rx="1.5" fill="#da251d" />
+      <polygon points="16.00,5.60 17.21,9.33 21.14,9.33 17.96,11.64 19.17,15.37 16.00,13.06 12.83,15.37 14.04,11.64 10.86,9.33 14.79,9.33" fill="#ffff00" />
+    </svg>`;
+
+  function addTerritoryFlags() {
+    const icon = L.divIcon({
+      html: FLAG_SVG,
+      className: "territory-flag",
+      iconSize: [32, 40],
+      iconAnchor: [3, 38], // the pole's foot sits on the coordinate
+    });
+
+    TERRITORIES.forEach(({ name, latlng }) => {
+      L.marker(latlng, {
+        icon,
+        interactive: false, // decoration: clicks fall through to the map
+        keyboard: false,
+        zIndexOffset: -1000, // keep memory markers above the flags
+      })
+        .bindTooltip(name, {
+          permanent: true,
+          direction: "right",
+          offset: [26, -20],
+          className: "territory-label",
+        })
+        .addTo(map);
+    });
   }
 
   function flyToEurope() {
@@ -441,7 +471,12 @@ const Markers = (() => {
     if (!UI.isEditingEnabled()) return;
     if (!confirm("Delete this memory?")) return;
 
-    await Storage.remove(id);
+    try {
+      await Storage.remove(id);
+    } catch (error) {
+      showToast(error.message || "Could not delete memory.", "error");
+      return;
+    }
     removeMarker(id);
     Gallery.removeCard(id);
     UI.updateCount();
@@ -495,19 +530,20 @@ const UploadModal = (() => {
       locLabel.textContent = name;
     });
 
-    overlay.inert = false;
-    overlay.classList.add("open");
-    overlay.setAttribute("aria-hidden", "false");
+    if (!overlay.open) overlay.showModal();
   }
 
   function close() {
-    overlay.classList.remove("open");
-    overlay.setAttribute("aria-hidden", "true");
-    overlay.inert = true;
+    if (overlay.open) overlay.close();
+  }
+
+  // Runs for every way the dialog can close (buttons, Esc, backdrop, back gesture)
+  overlay.addEventListener("close", () => {
     pendingLatLng = null;
     pendingImageDataURLs = [];
     fileSelectionId += 1;
-  }
+    resetZone();
+  });
 
   function resetZone() {
     zone.style.display = "";
@@ -611,7 +647,7 @@ const UploadModal = (() => {
 
     const oversized = validFiles.find((file) => file.size > 8 * 1024 * 1024);
     if (oversized) {
-      alert(`"${oversized.name}" is too large (max 8 MB).`);
+      showToast(`"${oversized.name}" is too large (max 8 MB).`, "error");
       return;
     }
 
@@ -630,7 +666,7 @@ const UploadModal = (() => {
       }
     } catch {
       if (selectionId === fileSelectionId) {
-        alert("Could not process the selected images.");
+        showToast("Could not process the selected images.", "error");
         resetZone();
         saveBtn.disabled = true;
       }
@@ -646,15 +682,24 @@ const UploadModal = (() => {
         ? "1 image selected."
         : `${compressed.length} images selected. The first image is shown as preview.`;
     selection.classList.add("visible");
+    // The zone is about to be hidden: move keyboard focus to the next useful control instead of dropping it
+    const zoneHadFocus = zone.contains(document.activeElement);
     zone.style.display = "none";
     saveBtn.disabled = false;
     saveBtn.textContent =
       compressed.length > 1
         ? `Save Memory · ${compressed.length} photos`
         : "Save Memory";
+    if (zoneHadFocus) saveBtn.focus();
   }
 
   zone.addEventListener("click", () => fileInput.click());
+  zone.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      fileInput.click();
+    }
+  });
   fileInput.addEventListener("change", (event) =>
     handleFiles(event.target.files),
   );
@@ -670,14 +715,8 @@ const UploadModal = (() => {
     handleFiles(event.dataTransfer.files);
   });
 
-  document.getElementById("upload-close").addEventListener("click", () => {
-    close();
-    resetZone();
-  });
-  document.getElementById("upload-cancel").addEventListener("click", () => {
-    close();
-    resetZone();
-  });
+  document.getElementById("upload-close").addEventListener("click", close);
+  document.getElementById("upload-cancel").addEventListener("click", close);
 
   saveBtn.addEventListener("click", async () => {
     if (!pendingImageDataURLs.length || !pendingLatLng) return;
@@ -720,22 +759,16 @@ const UploadModal = (() => {
 
       UI.updateCount();
       close();
-      resetZone();
       showToast("Memory saved!");
     } catch (error) {
-      alert(error.message || "Could not save memory.");
+      showToast(error.message || "Could not save memory.", "error");
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = "Save Memory";
     }
   });
 
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) {
-      close();
-      resetZone();
-    }
-  });
+  closeOnBackdropPress(overlay);
 
   return { open, close, compressImage, makeThumbnail, dataURLToFile };
 })();
@@ -762,18 +795,16 @@ const PasscodeModal = (() => {
   function open(onSubmit) {
     submitHandler = onSubmit;
     reset();
-    overlay.inert = false;
-    overlay.classList.add("open");
-    overlay.setAttribute("aria-hidden", "false");
-    requestAnimationFrame(() => input.focus());
+    if (!overlay.open) overlay.showModal(); // the input has `autofocus`
   }
 
   function close() {
-    overlay.classList.remove("open");
-    overlay.setAttribute("aria-hidden", "true");
-    overlay.inert = true;
-    submitHandler = null;
+    if (overlay.open) overlay.close();
   }
+
+  overlay.addEventListener("close", () => {
+    submitHandler = null;
+  });
 
   function showError(message) {
     error.textContent = message;
@@ -812,11 +843,7 @@ const PasscodeModal = (() => {
   form.addEventListener("submit", handleSubmit);
   closeBtn.addEventListener("click", handleDismiss);
   cancelBtn.addEventListener("click", handleDismiss);
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) {
-      handleDismiss();
-    }
-  });
+  closeOnBackdropPress(overlay);
 
   return { open, close };
 })();
@@ -862,16 +889,36 @@ const ViewModal = (() => {
     }
   }
 
-  prevBtn.addEventListener("click", () => {
-    if (!currentMemory) return;
-    imageIndex = (imageIndex - 1 + currentMemory.images.length) % currentMemory.images.length;
+  function step(delta) {
+    const total = currentMemory && currentMemory.images ? currentMemory.images.length : 0;
+    if (total < 2) return;
+    imageIndex = (imageIndex + delta + total) % total;
     renderImage();
+  }
+
+  prevBtn.addEventListener("click", () => step(-1));
+  nextBtn.addEventListener("click", () => step(1));
+
+  overlay.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") step(-1);
+    if (event.key === "ArrowRight") step(1);
   });
 
-  nextBtn.addEventListener("click", () => {
-    if (!currentMemory) return;
-    imageIndex = (imageIndex + 1) % currentMemory.images.length;
-    renderImage();
+  // Swipe left/right on the photo (the wrapper has touch-action: pan-y)
+  const imageWrap = overlay.querySelector(".view-image-wrap");
+  let swipeStart = null;
+  imageWrap.addEventListener("pointerdown", (event) => {
+    swipeStart = { x: event.clientX, y: event.clientY };
+  });
+  imageWrap.addEventListener("pointerup", (event) => {
+    if (!swipeStart) return;
+    const dx = event.clientX - swipeStart.x;
+    const dy = event.clientY - swipeStart.y;
+    swipeStart = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
+  });
+  imageWrap.addEventListener("pointercancel", () => {
+    swipeStart = null;
   });
 
   async function open(id) {
@@ -899,18 +946,17 @@ const ViewModal = (() => {
     coords.textContent = `${memory.lat.toFixed(5)}°, ${memory.lng.toFixed(5)}°`;
     syncControls();
 
-    overlay.inert = false;
-    overlay.classList.add("open");
-    overlay.setAttribute("aria-hidden", "false");
+    if (!overlay.open) overlay.showModal();
     MapModule.getMap().closePopup();
   }
 
   function close() {
-    overlay.classList.remove("open");
-    overlay.setAttribute("aria-hidden", "true");
-    overlay.inert = true;
-    currentId = null;
+    if (overlay.open) overlay.close();
   }
+
+  overlay.addEventListener("close", () => {
+    currentId = null;
+  });
 
   function syncControls() {
     deleteBtn.style.display = UI.isEditingEnabled() ? "" : "none";
@@ -937,7 +983,7 @@ const ViewModal = (() => {
       close();
       showToast("Memory deleted.");
     } catch (error) {
-      alert(error.message || "Could not delete memory.");
+      showToast(error.message || "Could not delete memory.", "error");
     } finally {
       deleteBtn.disabled = false;
       deleteBtn.textContent = "Delete";
@@ -946,11 +992,7 @@ const ViewModal = (() => {
 
   document.getElementById("view-close").addEventListener("click", close);
   document.getElementById("view-close2").addEventListener("click", close);
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) {
-      close();
-    }
-  });
+  closeOnBackdropPress(overlay);
 
   return { open, close, syncControls };
 })();
@@ -978,14 +1020,14 @@ const EditModal = (() => {
     keptImages.forEach((img, i) => {
       const div = document.createElement("div");
       div.className = "edit-image-item";
-      div.innerHTML = `<img src="${img.thumbnail}" /><button type="button" class="edit-image-remove" data-type="kept" data-index="${i}">✕</button>`;
+      div.innerHTML = `<img src="${img.thumbnail}" alt="Photo ${i + 1}" /><button type="button" class="edit-image-remove" data-type="kept" data-index="${i}" aria-label="Remove photo ${i + 1}">✕</button>`;
       imagesGrid.appendChild(div);
     });
 
     pendingNewImageDataURLs.forEach((dataUrl, i) => {
       const div = document.createElement("div");
       div.className = "edit-image-item pending";
-      div.innerHTML = `<img src="${dataUrl}" /><button type="button" class="edit-image-remove" data-type="new" data-index="${i}">✕</button>`;
+      div.innerHTML = `<img src="${dataUrl}" alt="New photo ${i + 1}" /><button type="button" class="edit-image-remove" data-type="new" data-index="${i}" aria-label="Remove new photo ${i + 1}">✕</button>`;
       imagesGrid.appendChild(div);
     });
 
@@ -1004,12 +1046,12 @@ const EditModal = (() => {
   fileInput.addEventListener("change", async (event) => {
     const files = Array.from(event.target.files || []).filter(f => f.type.startsWith("image/"));
     for (const file of files) {
-      if (file.size > 8 * 1024 * 1024) { alert(`"${file.name}" is too large.`); continue; }
+      if (file.size > 8 * 1024 * 1024) { showToast(`"${file.name}" is too large (max 8 MB).`, "error"); continue; }
       try {
         const compressed = await UploadModal.compressImage(file);
         pendingNewImageDataURLs.push(compressed);
       } catch {
-        alert(`Could not process "${file.name}".`);
+        showToast(`Could not process "${file.name}".`, "error");
       }
       await yieldToBrowser();
     }
@@ -1034,23 +1076,22 @@ const EditModal = (() => {
     saveBtn.disabled = false;
     saveBtn.textContent = "Save Changes";
 
-    overlay.inert = false;
-    overlay.classList.add("open");
-    overlay.setAttribute("aria-hidden", "false");
+    if (!overlay.open) overlay.showModal();
   }
 
   function close() {
-    overlay.classList.remove("open");
-    overlay.setAttribute("aria-hidden", "true");
-    overlay.inert = true;
-    currentId = null;
+    if (overlay.open) overlay.close();
   }
+
+  overlay.addEventListener("close", () => {
+    currentId = null;
+  });
 
   saveBtn.addEventListener("click", async () => {
     if (!currentId) return;
 
     if (keptImages.length === 0 && pendingNewImageDataURLs.length === 0) {
-      alert("A memory must have at least one image.");
+      showToast("A memory must have at least one image.", "error");
       return;
     }
 
@@ -1089,7 +1130,7 @@ const EditModal = (() => {
       showToast("Memory updated.");
       ViewModal.open(updatedMemory.id);
     } catch (error) {
-      alert(error.message || "Could not update memory.");
+      showToast(error.message || "Could not update memory.", "error");
       saveBtn.disabled = false;
       saveBtn.textContent = "Save Changes";
     }
@@ -1097,9 +1138,7 @@ const EditModal = (() => {
 
   closeBtn.addEventListener("click", close);
   cancelBtn.addEventListener("click", close);
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) close();
-  });
+  closeOnBackdropPress(overlay);
 
   return { open, close };
 })();
@@ -1123,9 +1162,12 @@ const Gallery = (() => {
     panel.setAttribute("aria-hidden", "false");
     document.getElementById("btn-gallery").classList.add("active");
     document.getElementById("btn-gallery").setAttribute("aria-expanded", "true");
+    document.getElementById("gallery-close").focus({ preventScroll: true });
   }
 
   function close() {
+    // Hand focus back to the toggle before the panel becomes inert, otherwise it is dropped to <body>
+    if (panel.contains(document.activeElement)) document.getElementById("btn-gallery").focus();
     panel.classList.remove("open");
     panel.setAttribute("aria-hidden", "true");
     panel.inert = true;
@@ -1249,6 +1291,13 @@ const Gallery = (() => {
     const visibleCards = [...grid.querySelectorAll(".gallery-card")].filter(
       (card) => card.style.display !== "none",
     );
+    // Only the owner can add memories, so only the owner is told to click the map
+    emptyMsg.textContent =
+      activeFilter !== "all"
+        ? "No memories in this category yet."
+        : UI.isEditingEnabled()
+          ? "No memories yet. Click on the map to add your first one."
+          : "No memories yet.";
     emptyMsg.classList.toggle("visible", visibleCards.length === 0);
   }
 
@@ -1258,7 +1307,7 @@ const Gallery = (() => {
 
   document.getElementById("gallery-close").addEventListener("click", close);
 
-  return { open, close, toggle, addCard, removeCard, render, updateCard };
+  return { open, close, toggle, addCard, removeCard, render, updateCard, updateEmpty };
 })();
 
 const UI = (() => {
@@ -1299,6 +1348,28 @@ const UI = (() => {
     const map = MapModule.getMap();
     setActive("btn-vietnam");
     setEditingEnabled(Storage.isOwnerSessionUnlocked());
+
+    // Small screens: the intro card covers part of the map, so fade it out once the user starts panning
+    map.once("dragstart", () => document.body.classList.add("story-dismissed"));
+
+    // HUD readout: cursor position on hover devices, map centre on touch devices, plus zoom level
+    const hudLat = document.getElementById("hud-lat");
+    const hudLng = document.getElementById("hud-lng");
+    const hudZoom = document.getElementById("hud-zoom");
+    const showCoords = (latlng) => {
+      hudLat.textContent = latlng.lat.toFixed(4);
+      hudLng.textContent = latlng.lng.toFixed(4);
+    };
+    showCoords(map.getCenter());
+    hudZoom.textContent = map.getZoom();
+    if (window.matchMedia("(hover: hover)").matches) {
+      map.on("mousemove", (event) => showCoords(event.latlng));
+    } else {
+      map.on("move", () => showCoords(map.getCenter()));
+    }
+    map.on("zoomend", () => {
+      hudZoom.textContent = map.getZoom();
+    });
 
     map.on("click", (event) => {
       if (!editingEnabled) return;
@@ -1394,6 +1465,7 @@ const UI = (() => {
 
     Markers.refreshPopups();
     ViewModal.syncControls();
+    Gallery.updateEmpty();
   }
 
   function lockOwnerMode() {
@@ -1417,13 +1489,45 @@ function escHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+// Close a modal <dialog> when the press AND release both land on its backdrop.
+// A click-target check would also fire for the dialog's own padding, so test the pointer position instead.
+function closeOnBackdropPress(dialog) {
+  const outside = (event) => {
+    const rect = dialog.getBoundingClientRect();
+    return (
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom
+    );
+  };
+  let pressedOutside = false;
+  dialog.addEventListener("pointerdown", (event) => {
+    pressedOutside = outside(event);
+  });
+  dialog.addEventListener("pointerup", (event) => {
+    if (pressedOutside && outside(event)) dialog.close();
+    pressedOutside = false;
+  });
+}
+
 let toastTimer = null;
-function showToast(message) {
+function showToast(message, type = "info") {
   const el = document.getElementById("toast");
+  // An open modal <dialog> makes the rest of the page inert (hidden from screen readers), so host the toast inside it.
+  const host = document.querySelector("dialog[open]") || document.body;
+  if (el.parentElement !== host) host.appendChild(el);
+  el.setAttribute("role", type === "error" ? "alert" : "status");
+  // The toast is a manual popover (top layer). Re-show it so it stacks above any <dialog> opened since the last toast.
+  if (el.showPopover) {
+    if (el.matches(":popover-open")) el.hidePopover();
+    el.showPopover();
+  }
   el.textContent = message;
+  el.classList.toggle("toast-error", type === "error");
   el.classList.add("visible");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove("visible"), 2500);
+  toastTimer = setTimeout(() => el.classList.remove("visible"), type === "error" ? 5000 : 2500);
 }
 
 function yieldToBrowser() {
@@ -1443,13 +1547,10 @@ async function boot() {
   Markers.init(map);
   UI.init();
 
+  // Open <dialog>s close themselves on Esc; only close the gallery panel when no dialog is open
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      ViewModal.close();
-      UploadModal.close();
-      PasscodeModal.close();
+    if (event.key === "Escape" && !document.querySelector("dialog[open]")) {
       Gallery.close();
-      if (typeof EditModal !== "undefined") EditModal.close();
     }
   });
 
@@ -1462,6 +1563,7 @@ async function boot() {
     UI.updateCount(memories.length);
   } catch (error) {
     console.warn("Could not load memories:", error);
+    showToast("Couldn't load memories. Check your connection and reload the page.", "error");
   }
 
   const loading = document.getElementById("loading-overlay");
